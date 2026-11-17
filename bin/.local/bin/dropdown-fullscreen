@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Keep the dropdown terminal fullscreen across hide/show. tdrop hides it by
+# unmapping the window, which makes i3 forget it was fullscreen, so tdrop's
+# hooks call this ($dropdown in the i3 config):
+#
+#   dropdown-fullscreen save WID      before hiding: note whether it is fullscreen
+#   dropdown-fullscreen restore WID   after showing: make it fullscreen again if so
+#
+# The note is a file per window id, so a new dropdown starts out floating.
+
+state="${XDG_RUNTIME_DIR:-/tmp}/dropdown-fullscreen"
+mkdir -p "$state"
+wid="$2"
+[ -n "$wid" ] || exit 0
+
+case "$1" in
+    save)
+        if xprop -id "$wid" _NET_WM_STATE 2>/dev/null | grep -q _NET_WM_STATE_FULLSCREEN; then
+            touch "$state/$wid"
+        else
+            rm -f "$state/$wid"
+        fi
+        ;;
+    restore)
+        [ -e "$state/$wid" ] && i3-msg -q "[id=$wid] fullscreen enable"
+        ;;
+esac
+exit 0

@@ -1,0 +1,318 @@
+#!/usr/bin/env python3
+"""Key binding help in rofi, in two steps: pick a section, then see its keys.
+
+Bound to $mod+slash in i3. Sections:
+  Window manager   i3, read from the config i3 has loaded (i3-msg -t get_config)
+  Terminal         kitty, read from ~/.config/kitty/kitty.conf
+Both are read every time, so the lists always match the bindings in use.
+
+In a list, Esc goes back to the sections; Esc there (or Enter anywhere) closes.
+Descriptions come from the command itself; for a program launch (exec) it is
+the comment line just above the binding, or else the program's name. Runs of
+numbered bindings (Mod+1 ... Mod+0, Insert+1 ... 9) are shown as one line each.
+
+  i3-keys --print [wm|terminal]   print the lists instead of showing rofi
+"""
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+
+# ---------------------------------------------------------------- shared
+
+def comment_label(line, current):
+    """The first line of a comment block, cut to a short label."""
+    body = line.lstrip("#").strip()
+    if current or body.startswith(("bindsym", "bindcode", "map ")) or not body:
+        return current
+    # just the label: the text before any ". ", ":" or " ("
+    body = re.split(r"\. |:| \(", body)[0].rstrip(".")
+    return body[:1].upper() + body[1:]
+
+
+def merge_and_fold(rows, fold_text):
+    """rows: [key, desc, group]. Keys doing the same thing share one line;
+    a run of rows with the same group (numbered keys) becomes one line."""
+    merged = []
+    for key, desc, group in rows:
+        twin = next((r for r in merged if group is None and r[2] is None and r[1] == desc), None)
+        if twin:
+            twin[0] += " / " + key
+        else:
+            merged.append([key, desc, group])
+    out, i = [], 0
+    while i < len(merged):
+        key, desc, group = merged[i]
+        if group:
+            j = i
+            while j < len(merged) and merged[j][2] == group:
+                j += 1
+            first, last = merged[i], merged[j - 1]
+            prefix, a = first[0].rsplit("+", 1)
+            b = last[0].rsplit("+", 1)[1]
+            out.append((f"{prefix}+{a}…{b}", fold_text(group, first[1], last[1])))
+            i = j
+        else:
+            out.append((key, desc))
+            i += 1
+    return out
+
+
+def format_rows(rows):
+    width = max(len(k) for k, _ in rows) + 3
+    return [f"{k:<{width}}{d}" for k, d in rows]
+
+
+# ---------------------------------------------------------------- i3
+
+I3_KEYS = {
+    "Return": "Enter", "space": "Space", "bracketleft": "[", "bracketright": "]",
+    "slash": "/", "Left": "←", "Right": "→", "Up": "↑", "Down": "↓",
+    "XF86AudioRaiseVolume": "Volume Up", "XF86AudioLowerVolume": "Volume Down",
+    "XF86AudioMute": "Mute", "XF86AudioMicMute": "Mic Mute",
+}
+
+I3_COMMANDS = {
+    "kill": "Close focused window",
+    "fullscreen toggle": "Toggle fullscreen",
+    "split v": "Split vertically (next window opens below)",
+    "split h": "Split horizontally (next window opens beside)",
+    "layout stacking": "Layout: stacked",
+    "layout tabbed": "Layout: tabbed",
+    "layout toggle split": "Layout: toggle split direction",
+    "floating toggle": "Toggle floating / tiling",
+    "focus mode_toggle": "Switch focus between floating and tiling",
+    "focus parent": "Focus parent container",
+    "focus child": "Focus child container",
+    "reload": "Reload i3 config",
+    "restart": "Restart i3 in place (keeps windows)",
+}
+
+
+def i3_config():
+    try:
+        out = subprocess.run(["i3-msg", "-t", "get_config"], capture_output=True,
+                             text=True, check=True).stdout
+        data = json.loads(out)
+        return data.get("included_configs", [{}])[0].get("raw_contents") or data["config"]
+    except Exception:
+        return (Path.home() / ".config/i3/config").read_text()
+
+
+def i3_key(combo, variables):
+    parts = []
+    for p in combo.split("+"):
+        if p.startswith("$"):
+            p = variables.get(p, p)
+        p = {"Mod4": "Mod", "Mod1": "Alt", "Control": "Ctrl"}.get(p, p)
+        p = I3_KEYS.get(p, p)
+        parts.append(p.upper() if len(p) == 1 and p.isalpha() else p)
+    return "+".join(parts)
+
+
+def i3_describe(cmd, comment):
+    c = cmd.strip()
+    m = re.match(r"exec\s+(--no-startup-id\s+)?(.*)", c)
+    if m:
+        prog = m.group(2).strip().strip('"')
+        if "pactl set-sink-volume" in prog:
+            return "Volume " + ("up" if "+" in prog.split("set-sink-volume")[1] else "down") + " 10%"
+        if "set-sink-mute" in prog:
+            return "Mute / unmute speakers"
+        if "set-source-mute" in prog:
+            return "Mute / unmute microphone"
+        if "i3-nagbar" in prog and "exit" in prog:
+            return "Exit i3 (log out, asks first)"
+        if comment:
+            return comment
+        return "Run " + Path(prog.split()[0]).name if prog else "Run ?"
+    m = re.match(r"(focus|move) (left|right|up|down)$", c)
+    if m:
+        return f"{m.group(1).capitalize()} window {m.group(2)}"
+    if c in I3_COMMANDS:
+        return I3_COMMANDS[c]
+    m = re.match(r"resize (shrink|grow) (width|height) (\d+) px", c)
+    if m:
+        return f"{m.group(1).capitalize()} window {m.group(2)} by {m.group(3)}px"
+    return comment or c
+
+
+def i3_rows():
+    variables, rows, comment = {}, [], ""
+    for raw in i3_config().splitlines():
+        line = raw.strip()
+        if not line:
+            comment = ""
+            continue
+        if line.startswith("#"):
+            comment = comment_label(line, comment)
+            continue
+        m = re.match(r"set\s+(\$\S+)\s+(.*)", line)
+        if m:
+            variables[m.group(1)] = m.group(2).strip('"')
+        m = re.match(r"bindsym\s+((?:--\S+\s+)*)(\S+)\s+(.*)", line)
+        if not m:
+            continue
+        combo, cmd = m.group(2), m.group(3)
+        # longest names first, so $ws10 is not read as $ws1 + "0"
+        for name in sorted(variables, key=len, reverse=True):
+            if name != "$mod":
+                cmd = cmd.replace(name, variables[name])
+        key = i3_key(combo, variables)
+        ws = re.match(r"(move container to )?workspace (?:number )?(\S+)$", cmd)
+        if ws:
+            rows.append([key, ws.group(2), "move" if ws.group(1) else "go"])
+        else:
+            rows.append([key, i3_describe(cmd, comment), None])
+
+    def fold(group, a, b):
+        return ("Go to workspace" if group == "go" else "Move window to workspace") + f" {a}–{b}"
+    return merge_and_fold(rows, fold)
+
+
+# ---------------------------------------------------------------- kitty
+
+KITTY_CONF = Path.home() / ".config/kitty/kitty.conf"
+
+KITTY_MODS = {"hyper": "Insert", "ctrl": "Ctrl", "control": "Ctrl", "shift": "Shift",
+              "alt": "Alt", "opt": "Alt", "option": "Alt", "super": "Super",
+              "cmd": "Super", "meta": "Meta"}
+KITTY_KEYS = {"enter": "Enter", "return": "Enter", "space": "Space", "tab": "Tab",
+              "escape": "Esc", "backspace": "Backspace", "left": "←", "right": "→",
+              "up": "↑", "down": "↓", "page_up": "PgUp", "page_down": "PgDn",
+              "home": "Home", "end": "End", "delete": "Delete", "insert": "Insert",
+              "equal": "=", "minus": "-", "plus": "+", "comma": ",", "period": ".",
+              "slash": "/"}
+
+KITTY_ACTIONS = {
+    "new_tab": "New tab",
+    "new_tab_with_cwd": "New tab in the current directory",
+    "close_tab": "Close tab",
+    "previous_tab": "Previous tab",
+    "next_tab": "Next tab",
+    "move_tab_backward": "Move tab left",
+    "move_tab_forward": "Move tab right",
+    "set_tab_title": "Rename tab",
+    "new_window": "New window (split) in this tab",
+    "close_window": "Close window (split)",
+    "next_window": "Next window (split)",
+    "previous_window": "Previous window (split)",
+    "next_layout": "Next layout",
+    "new_os_window": "New kitty window",
+    "copy_to_clipboard": "Copy",
+    "paste_from_clipboard": "Paste",
+    "scroll_line_up": "Scroll up a line",
+    "scroll_line_down": "Scroll down a line",
+    "scroll_page_up": "Scroll up a page",
+    "scroll_page_down": "Scroll down a page",
+    "scroll_home": "Scroll to the top",
+    "scroll_end": "Scroll to the bottom",
+    "show_scrollback": "Vim copy mode: scrollback in Neovim (y copies, q closes)",
+    "load_config_file": "Reload kitty config",
+    "edit_config_file": "Edit kitty config",
+    "close": "Close window",
+}
+
+
+def kitty_describe(action):
+    """Descriptions that depend on the action's arguments."""
+    m = re.match(r"change_font_size\s+\S+\s+([+-]?)[\d.]+$", action)
+    if m:
+        return {"+": "Bigger text", "-": "Smaller text"}.get(m.group(1), "Reset text size")
+    return None
+
+
+def kitty_key(combo):
+    parts = []
+    for p in combo.split("+"):
+        low = p.lower()
+        p = KITTY_MODS.get(low) or KITTY_KEYS.get(low) or p
+        parts.append(p.upper() if len(p) == 1 and p.isalpha() else p)
+    return "+".join(parts)
+
+
+def kitty_rows():
+    rows, comment = [], ""
+    try:
+        text = KITTY_CONF.read_text()
+    except OSError:
+        return [("", f"Could not read {KITTY_CONF}")]
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            comment = ""
+            continue
+        if line.startswith("#"):
+            comment = comment_label(line, comment)
+            continue
+        m = re.match(r"map\s+((?:--\S+\s+)*)(\S+)\s+(.*)", line)
+        if not m:
+            continue
+        combo, action = m.group(2), m.group(3).strip()
+        if " > " in combo or ">" in combo:      # multi-key sequences: show as typed
+            key = " then ".join(kitty_key(k) for k in combo.split(">"))
+        else:
+            key = kitty_key(combo)
+        g = re.match(r"(?:kitten goto_or_new_tab\.py|goto_tab)\s+(\d+)$", action)
+        if g:
+            kind = "new" if action.startswith("kitten") else "goto"
+            rows.append([key, g.group(1), kind])
+            continue
+        name = action.split()[0]
+        desc = kitty_describe(action) or KITTY_ACTIONS.get(name)
+        if desc is None:
+            desc = comment or action
+        rows.append([key, desc, None])
+
+    def fold(group, a, b):
+        if group == "new":
+            return f"Go to tab {a}–{b} (opens a new tab if it doesn't exist)"
+        return f"Go to tab {a}–{b}"
+    return merge_and_fold(rows, fold)
+
+
+# ---------------------------------------------------------------- menu
+
+SECTIONS = [
+    ("wm", "Window manager", "i3 · Mod is the Super key", i3_rows),
+    ("terminal", "Terminal", "kitty · kitty's Ctrl+Shift defaults also work",
+     kitty_rows),
+]
+
+
+def rofi(lines, prompt, mesg, selected=0):
+    """Show a list; returns (exit code, chosen index or None)."""
+    r = subprocess.run(["rofi", "-dmenu", "-i", "-no-custom", "-no-show-icons",
+                        "-format", "i", "-p", prompt, "-mesg", mesg,
+                        "-selected-row", str(selected)],
+                       input="\n".join(lines), text=True, capture_output=True)
+    out = r.stdout.strip()
+    return r.returncode, (int(out) if out.isdigit() else None)
+
+
+def main():
+    if "--print" in sys.argv:
+        want = sys.argv[sys.argv.index("--print") + 1:] or [s[0] for s in SECTIONS]
+        for sid, title, mesg, rows in SECTIONS:
+            if sid in want:
+                print(f"== {title}\n" + "\n".join(format_rows(rows())) + "\n")
+        return
+
+    choice = 0
+    while True:
+        code, picked = rofi([s[1] for s in SECTIONS], "keys",
+                            "Key bindings: pick a section", choice)
+        if code != 0 or picked is None:
+            return                      # Esc: close
+        choice = picked
+        _, title, mesg, rows = SECTIONS[picked]
+        code, _ = rofi(format_rows(rows()), title.lower(), mesg + " · Esc: back")
+        if code == 0:
+            return                      # Enter: close
+        # Esc (or anything else): back to the sections
+
+
+if __name__ == "__main__":
+    main()

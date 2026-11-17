@@ -1,0 +1,115 @@
+/* Centered popup. Colors are in colors.rasi, written from the kitty theme
+   by kitty-colors.sh whenever theme-select ($mod+Shift+t) runs. */
+@import "colors.rasi"
+
+* {
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+window {
+    location:         center;
+    anchor:           center;
+    /* the same size as the dropdown terminal ($dropdown in the i3 config) */
+    width:            768px;
+    height:           476px;
+    background-color: @bg;
+    border:           1px;
+    border-color:     @frame;
+}
+
+mainbox {
+    spacing:  0;
+    children: [ inputbar, message, listview ];
+}
+
+/* the window frame closes the input box on three sides; this line closes the
+   fourth, so it is boxed in without a doubled edge */
+inputbar {
+    background-color: @alt-bg;
+    border:           0 0 1px 0;
+    border-color:     @frame;
+    padding:          6px 8px;
+    spacing:          8px;
+    children:         [ prompt, entry ];
+}
+
+prompt {
+    text-color: @accent;
+}
+
+entry {
+    placeholder:       "type to search";
+    placeholder-color: @dim;
+    cursor:            text;
+}
+
+message {
+    background-color: @alt-bg;
+    border:           0 0 1px 0;
+    border-color:     @frame;
+    padding:          6px 8px;
+}
+
+textbox {
+    text-color: @dim;
+}
+
+listview {
+    lines:     10;
+    columns:   1;
+    fixed-height: false;
+    spacing:   2px;
+    scrollbar: false;
+}
+
+element {
+    padding: 4px 8px;
+    spacing: 8px;
+}
+
+element normal.normal {
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+/* every other row gets the lighter shade, for easier reading */
+element alternate.normal, element alternate.urgent, element alternate.active {
+    background-color: @alt-bg;
+}
+
+element alternate.normal {
+    text-color:       @fg;
+}
+
+element selected.normal {
+    background-color: @sel-bg;
+    text-color:       @sel-fg;
+}
+
+element normal.urgent, element alternate.urgent {
+    text-color: @urgent;
+}
+
+element selected.urgent {
+    background-color: @urgent;
+    text-color:       @bg;
+}
+
+element normal.active, element alternate.active {
+    text-color: @accent;
+}
+
+element selected.active {
+    background-color: @accent;
+    text-color:       @bg;
+}
+
+element-icon {
+    size: 1.2em;
+}
+
+element-text, element-icon {
+    background-color: inherit;
+    text-color:       inherit;
+}

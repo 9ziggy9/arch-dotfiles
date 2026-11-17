@@ -1,0 +1,16 @@
+! Insert becomes Hyper, a modifier of its own (mod3) for kitty shortcuts
+! (map hyper+... in kitty.conf). i3 binds nothing to it, so kitty gets every
+! Hyper combination. Loaded by the i3 config; written so it can be run again
+! safely (exec_always on every reload).
+!
+! (Right Shift can't be used for this: this Toughbook's keyboard sends Left
+! Shift for both Shift keys.)
+!
+! To undo: delete the exec_always line in the i3 config, then run
+!   setxkbmap -layout us -option terminate:ctrl_alt_bksp
+keycode 62 = Shift_R
+clear shift
+add shift = Shift_L Shift_R
+keycode 118 = Hyper_R
+clear mod3
+add mod3 = Hyper_R

@@ -1,0 +1,37 @@
+# Packages are stowed with --no-folding (see .stowrc), so ~/.config/<app> stays
+# a real directory and generated or runtime files are written there, not here.
+# These rules are a safety net in case one ever lands in the repo.
+
+# Written by theme-select and the scripts it runs
+kitty/.config/kitty/current-theme.conf
+rofi/.config/rofi/colors.rasi
+bumblebee/.config/bumblebee-status/colors.json
+bumblebee/.config/bumblebee-status/themes/
+i3/.config/i3/bar.conf
+emacs/.config/emacs/theme
+emacs/.config/emacs/theme-colors
+
+# Emacs packages, caches and session state
+emacs/.config/emacs/elpa/
+emacs/.config/emacs/eln-cache/
+emacs/.config/emacs/tree-sitter/
+emacs/.config/emacs/transient/
+emacs/.config/emacs/auto-save/
+emacs/.config/emacs/.cache/
+emacs/.config/emacs/custom.el
+emacs/.config/emacs/history
+emacs/.config/emacs/recentf
+emacs/.config/emacs/places.eld
+emacs/.config/emacs/projects.eld
+emacs/.config/emacs/test/
+
+# qutebrowser data (bookmarks are personal data, not config)
+qutebrowser/.config/qutebrowser/bookmarks/
+qutebrowser/.config/qutebrowser/autoconfig.yml
+
+# Editor and interpreter leftovers
+*~
+\#*#
+.#*
+*.elc
+__pycache__/

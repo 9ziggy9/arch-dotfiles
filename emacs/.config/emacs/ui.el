@@ -1,0 +1,387 @@
+;;; ui.el --- looks, windows, file and buffer browsing, popups -*- lexical-binding: t -*-
+
+(require 'popup (locate-user-emacs-file "popup"))
+
+;; Line numbers
+(setq display-line-numbers-type 'relative)
+(add-hook 'prog-mode-hook #'display-line-numbers-mode)
+
+;; A cursor only in the selected window, none in the other splits
+(setq-default cursor-in-non-selected-windows nil)
+
+;; Echo area text at 60% of the buffer text size
+(dolist (buf '(" *Echo Area 0*" " *Echo Area 1*"))
+  (with-current-buffer (get-buffer-create buf)
+    (face-remap-add-relative 'default :height 0.6)))
+
+;; Long messages show only their first line, rather than growing the echo area
+(setq message-truncate-lines t)
+
+;;; Theme
+(use-package railscasts-reloaded-theme :defer t)
+
+;; Selections (visual mode) and the highlighted line are dark text on muted
+;; amber, in every theme; redone after each theme, since themes set these faces
+(defun my/selection-faces (&rest _)
+  (dolist (face '(region hl-line))
+    (when (facep face)
+      (set-face-attribute face nil
+                          :background "#c9a66b" :foreground "#1c1c1c"
+                          :distant-foreground 'unspecified))))
+
+(my/selection-faces)
+(add-hook 'enable-theme-functions #'my/selection-faces)
+
+;; Line numbers a little smaller than the text; redone after each theme,
+;; since themes set these faces
+(defun my/line-number-faces (&rest _)
+  (dolist (face '(line-number line-number-current-line))
+    (set-face-attribute face nil :height 0.85)))
+
+(my/line-number-faces)
+(add-hook 'enable-theme-functions #'my/line-number-faces)
+(with-eval-after-load 'hl-line (my/selection-faces))
+
+(use-package base16-theme               ; ~360 schemes: base16-<name>
+  :defer t
+  :init
+  ;; The line-number margin and fringe on the normal background, not a
+  ;; separate shade (set before the saved theme loads below)
+  (setq base16-theme-distinct-fringe-background nil))
+(use-package ef-themes :defer t)        ; ~34 polished light/dark themes
+(use-package doom-themes :defer t)      ; ~60 themes: doom-<name>
+
+;; The theme picked with consult-theme is remembered across restarts;
+;; Railscasts until one is picked (or if the saved one is gone)
+(defvar my/theme-file (locate-user-emacs-file "theme")
+  "File holding the name of the last theme picked.")
+
+(defun my/save-theme (theme)
+  "Remember THEME for the next start."
+  (when theme
+    (with-temp-file my/theme-file
+      (prin1 theme (current-buffer)))))
+
+(defun my/saved-theme ()
+  (ignore-errors
+    (with-temp-buffer
+      (insert-file-contents my/theme-file)
+      (read (current-buffer)))))
+
+(unless (ignore-errors (load-theme (my/saved-theme) t))
+  (load-theme 'railscasts-reloaded t))
+
+;; consult-theme lists color themes only, and the pick is remembered:
+;; newcomers-presets changes settings (turns on the tab bar), light-blue
+;; is obsolete, and base16 is just the base16 package's helper file
+(with-eval-after-load 'consult
+  (setq consult-themes
+        (seq-difference (custom-available-themes)
+                        '(newcomers-presets light-blue base16)))
+  (advice-add 'consult-theme :after #'my/save-theme))
+
+;;; Windows
+(use-package window
+  :ensure nil
+  :custom
+  (window-combination-resize t))
+
+;; Borders between windows, the background with a quarter of the text
+;; color mixed in, so they show in every theme (some, like the doom ones,
+;; hide the default border); redone after each theme
+(setq window-divider-default-places t   ; between side-by-side and stacked
+      window-divider-default-right-width 2
+      window-divider-default-bottom-width 2)
+(window-divider-mode 1)
+
+(defun my/divider-faces (&rest _)
+  "Color the window borders from the current theme's colors."
+  (let ((bg (face-background 'default nil t))
+        (fg (face-foreground 'default nil t)))
+    (when (and (color-defined-p bg) (color-defined-p fg))
+      (let ((line (apply #'color-rgb-to-hex
+                         (append (cl-mapcar (lambda (b f) (+ b (* 0.25 (- f b))))
+                                            (color-name-to-rgb bg)
+                                            (color-name-to-rgb fg))
+                                 '(2)))))
+        (dolist (face '(window-divider window-divider-first-pixel
+                        window-divider-last-pixel vertical-border))
+          (set-face-attribute face nil :foreground line :background line))))))
+
+(my/divider-faces)
+(add-hook 'enable-theme-functions #'my/divider-faces)
+
+;;; Key hints: pause after a prefix to see what can follow it
+(use-package which-key
+  :ensure nil                          ; built in since Emacs 30
+  :init (which-key-mode 1))
+
+;;; Richer help buffers (source, references, keybindings)
+(use-package helpful
+  :bind
+  (([remap describe-function] . helpful-callable)
+   ([remap describe-variable] . helpful-variable)
+   ([remap describe-command]  . helpful-command)
+   ([remap describe-key]      . helpful-key)
+   ([remap describe-symbol]   . helpful-symbol)))
+
+;;; Command log: a live side buffer of every key and the command it ran
+(use-package command-log-mode
+  :commands clm/toggle-command-log-buffer
+  :custom
+  (command-log-mode-key-binding-open-log nil)   ; don't grab C-c o
+  (command-log-mode-open-log-turns-on-mode t)   ; opening the log starts logging
+  (command-log-mode-is-global t))               ; ...in every buffer
+
+;;; File tree: C-t (see universal.el)
+(use-package treemacs
+  :defer t
+  :hook
+  (treemacs-mode . (lambda ()        ; text at 75%
+                     (face-remap-add-relative 'default :height 0.75)))
+  (treemacs-mode . my/treemacs-preview-setup)
+  :custom
+  (treemacs-no-png-images t)         ; no icons, just +/- on directories
+  (treemacs-width 22)                ; columns (default 35)
+  :config
+  (add-hook 'window-selection-change-functions #'my/treemacs-keep-preview)
+  (treemacs-follow-mode 1)           ; highlight the file you're in
+  (treemacs-project-follow-mode 1))  ; switch projects as you do
+
+;; Preview: resting on a file in treemacs shows it in the window you came
+;; from.  A file opened only to preview is closed as soon as the preview
+;; moves on, so at most one exists; leaving treemacs keeps whatever is
+;; showing.  (treemacs-peek-mode only cleans up on some ways of leaving.)
+(declare-function treemacs-current-button "treemacs-core-utils")
+(declare-function treemacs-button-get "treemacs-core-utils")
+
+(defvar my/treemacs-preview-buffer nil
+  "Buffer opened only for previewing, or nil.")
+
+(defvar my/treemacs-preview-timer nil)
+
+(defvar my/treemacs-origin nil
+  "(WINDOW BUFFER START POINT): the previewing window, before previews.")
+
+(defun my/treemacs-preview (treemacs-buf)
+  "Show the file at point in TREEMACS-BUF in the most recent other window."
+  (when (eq (window-buffer (selected-window)) treemacs-buf)
+    (with-current-buffer treemacs-buf
+      (let* ((button (treemacs-current-button))
+             (path (and button (treemacs-button-get button :path)))
+             (win (get-mru-window nil nil t)))
+        (when (and (stringp path) (file-regular-p path) (window-live-p win))
+          (unless my/treemacs-origin
+            (setq my/treemacs-origin (list win (window-buffer win)
+                                           (window-start win) (window-point win))))
+          (let* ((existing (get-file-buffer path))
+                 (buf (or existing
+                          (let ((inhibit-message t))
+                            (find-file-noselect path))))
+                 (old my/treemacs-preview-buffer))
+            (set-window-buffer win buf)
+            (setq my/treemacs-preview-buffer (unless existing buf))
+            (when (and (buffer-live-p old) (not (eq old buf))
+                       (not (get-buffer-window old t)))
+              (kill-buffer old))))))))
+
+(defun my/treemacs-preview-soon ()
+  "Preview once the cursor rests, so scrolling past files doesn't open them."
+  (when (timerp my/treemacs-preview-timer)
+    (cancel-timer my/treemacs-preview-timer))
+  (setq my/treemacs-preview-timer
+        (run-with-idle-timer 0.15 nil #'my/treemacs-preview (current-buffer))))
+
+(defun my/treemacs-preview-setup ()
+  (add-hook 'post-command-hook #'my/treemacs-preview-soon nil t))
+
+(defun my/treemacs-keep-preview (&rest _)
+  "Leaving treemacs, by any route, keeps the previewed file open."
+  (unless (with-current-buffer (window-buffer (selected-window))
+            (derived-mode-p 'treemacs-mode))
+    (setq my/treemacs-preview-buffer nil
+          my/treemacs-origin nil)))
+
+;; C-<return> opens the file at point in a new split to the right of the
+;; window treemacs came from, like dired's; that window first goes back
+;; to what it showed before any previewing
+(defun my/treemacs-open-in-split ()
+  "Open the file at point in a split right of the window treemacs came from."
+  (interactive)
+  (let* ((button (treemacs-current-button))
+         (path (and button (treemacs-button-get button :path)))
+         (win (get-mru-window nil nil t))
+         (preview my/treemacs-preview-buffer))
+    (unless (and (stringp path) (file-regular-p path))
+      (user-error "Not on a file"))
+    (unless (window-live-p win)
+      (user-error "No window to split"))
+    (when (timerp my/treemacs-preview-timer)
+      (cancel-timer my/treemacs-preview-timer))
+    (pcase my/treemacs-origin
+      (`(,owin ,buf ,start ,pt)
+       (when (and (eq owin win) (buffer-live-p buf))
+         (set-window-buffer win buf)
+         (set-window-start win start)
+         (set-window-point win pt))))
+    (setq my/treemacs-preview-buffer nil
+          my/treemacs-origin nil)
+    (select-window (split-window win nil 'right))
+    (find-file path)
+    ;; A preview of some other file, now shown nowhere
+    (when (and (buffer-live-p preview) (not (get-buffer-window preview t)))
+      (kill-buffer preview))))
+
+(with-eval-after-load 'treemacs
+  (keymap-set treemacs-mode-map "C-<return>" #'my/treemacs-open-in-split))
+
+(use-package treemacs-evil           ; j/k and friends inside treemacs
+  :after (treemacs evil))
+
+;;; Dired
+(use-package dired
+  :ensure nil
+  :custom
+  (dired-kill-when-opening-new-dired-buffer t)
+  :init
+  ;; After evil-collection's own dired keys, so these win
+  (add-hook 'evil-collection-setup-hook
+            (lambda (mode _keymaps)
+              (when (eq mode 'dired)
+                (evil-define-key 'normal dired-mode-map
+                  "=" #'dired-create-empty-file   ; the +/= key on its own
+                  "+" #'dired-create-directory))))) ; with Shift
+
+(declare-function dired-get-file-for-visit "dired")
+(declare-function dired-find-file "dired")
+(declare-function dired-goto-file "dired")
+(declare-function dired-noselect "dired")
+
+(defun pop/dired-here ()
+  "A dired buffer at the main buffer's directory, on the file you came from."
+  (let* ((main (pop/main-buffer))
+         (file (buffer-file-name main))
+         (buf (dired-noselect (buffer-local-value 'default-directory main))))
+    (when file
+      (with-current-buffer buf (dired-goto-file file)))
+    buf))
+
+(defun pop/dired-find-file ()
+  "Enter directories in place; open files in the main frame."
+  (interactive)
+  (let ((file (dired-get-file-for-visit)))
+    (if (file-directory-p file)
+        (dired-find-file)
+      (pop/hide)
+      (find-file file))))
+
+(defun pop/dired-open-in-split ()
+  "Hide the popup and open the file at point in a new split in the main frame."
+  (interactive)
+  (let ((file (dired-get-file-for-visit)))
+    (pop/hide)
+    (select-window (split-window-right))
+    (find-file file)))
+
+(pop/define dired
+  :match   (derived-mode-p 'dired-mode)
+  :open    #'pop/dired-here
+  :size    (0.8 . 0.8)
+  :setup   (pop/text-scale 0.8)
+  :keys    ("RET"        pop/dired-find-file
+            "C-<return>" pop/dired-open-in-split
+            "q"          pop/hide)
+  :hints   ("C-RET" "split"  "-" "up"  "m/u" "mark"
+            "d/x" "delete"  "R" "rename"  "C" "copy"  "=" "file"  "+" "dir"
+            "?" "keys"))
+
+;;; Ibuffer
+(use-package ibuffer
+  :ensure nil
+  :custom
+  (ibuffer-expert t)
+  (ibuffer-show-empty-filter-groups nil))
+
+(use-package ibuffer-project            ; group buffers by project
+  :hook
+  (ibuffer . (lambda ()
+               (setq ibuffer-filter-groups (ibuffer-project-generate-filter-groups)))))
+
+(declare-function ibuffer "ibuffer")
+(declare-function ibuffer-update "ibuffer")
+(declare-function ibuffer-current-buffer "ibuffer")
+(declare-function ibuffer-jump-to-buffer "ibuffer")
+
+(defun pop/ibuffer-here ()
+  "A fresh ibuffer list, with the cursor on the buffer you came from."
+  (let ((main (pop/main-buffer)))
+    (save-window-excursion (ibuffer nil "*Ibuffer*" nil t))
+    (with-current-buffer "*Ibuffer*"
+      (ibuffer-update nil t)
+      (ignore-errors (ibuffer-jump-to-buffer (buffer-name main)))
+      (current-buffer))))
+
+(defun pop/ibuffer-visit ()
+  "Hide the popup and show the buffer at point in the main window."
+  (interactive)
+  (let ((buf (ibuffer-current-buffer t)))
+    (pop/hide)
+    (switch-to-buffer buf)))
+
+(defun pop/ibuffer-visit-in-split ()
+  "Hide the popup and show the buffer at point in a new split."
+  (interactive)
+  (let ((buf (ibuffer-current-buffer t)))
+    (pop/hide)
+    (select-window (split-window-right))
+    (switch-to-buffer buf)))
+
+(pop/define ibuffer
+  :match   (derived-mode-p 'ibuffer-mode)
+  :open    #'pop/ibuffer-here
+  :setup   (pop/text-scale 0.8)
+  :keys    ("RET"        pop/ibuffer-visit
+            "C-<return>" pop/ibuffer-visit-in-split
+            "q"          pop/hide)
+  :hints   ("C-RET" "split"  "m/u" "mark"  "d/x" "kill"
+            "S" "save"  "TAB" "next group"
+            "?" "keys"))
+
+;;; Scratchpad
+
+;; The *scratch* buffer, for notes and trying out elisp; escape leaves
+;; insert state first, then closes
+
+(pop/define scratch
+  :match (equal (buffer-name) "*scratch*")
+  :open  #'get-scratch-buffer-create)
+
+;;; About
+
+;; This config's own README.org, read-only in a popup with no mode line.
+;; It's a copy, refreshed on each open, so the file itself stays a normal
+;; buffer wherever you edit it.
+
+(defun pop/about-buffer ()
+  "A read-only copy of the config's README.org."
+  (let ((file (locate-user-emacs-file "README.org")))
+    (with-current-buffer (get-buffer-create "*about*")
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (if (file-exists-p file)
+            (insert-file-contents file)
+          (insert (format "No %s yet." (abbreviate-file-name file))))
+        (unless (derived-mode-p 'org-mode)
+          (org-mode))
+        (goto-char (point-min)))
+      (setq buffer-read-only t)
+      (current-buffer))))
+
+(pop/define about
+  :match (equal (buffer-name) "*about*")
+  :open  #'pop/about-buffer
+  :setup (progn (pop/text-scale 0.8)
+                (visual-line-mode 1))   ; wrap long lines, don't cut them off
+  :keys  ("q" pop/hide))
+
+(provide 'ui)
