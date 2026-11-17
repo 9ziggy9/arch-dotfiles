@@ -13,7 +13,8 @@ SHARES is JSON like {"cpu": 10, "pasink": 5}: each module's share of the bar.
   text centered in each. Widths are measured with Pango, as i3bar draws them.
 - One frame is drawn around all the modules.
 
-Colors come from colors.json, written by bar-theme.py from the kitty theme.
+Colors come from the bar theme, themes/base16-powerline.json, which tinty
+writes from the color scheme: its first segment colors.
 Clicks from i3bar don't come through here; they go straight to
 bumblebee-status.
 """
@@ -40,13 +41,13 @@ SLACK_PX = int(os.environ.get("STATUSLINE_SLACK", "-1"))
 
 shares = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}
 
-colors = {"bg": "#282828", "fg": "#ebdbb2", "frame": "#ffffff"}
+colors = {"bg": "#282828", "fg": "#ebdbb2"}
 try:
-    with open(os.path.join(HERE, "colors.json")) as f:
-        colors.update(json.load(f))
-except (OSError, ValueError):
+    with open(os.path.join(HERE, "themes", "base16-powerline.json")) as f:
+        colors.update(json.load(f)["cycle"][0])
+except (OSError, ValueError, KeyError, IndexError):
     pass
-frame = os.environ.get("STATUSLINE_FRAME") or colors["frame"]
+frame = os.environ.get("STATUSLINE_FRAME") or colors["fg"]
 
 _layout = PangoCairo.create_layout(cairo.Context(cairo.ImageSurface(cairo.FORMAT_ARGB32, 1, 1)))
 _layout.set_font_description(Pango.FontDescription(FONT))

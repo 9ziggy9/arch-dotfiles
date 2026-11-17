@@ -13,5 +13,5 @@ configuration {
     kb-remove-to-eol:    "";
 }
 
-/* layout; colors come from colors.rasi, which follows the kitty theme */
+/* layout; colors come from colors.rasi, which follows the color scheme */
 @theme "~/.config/rofi/theme.rasi"

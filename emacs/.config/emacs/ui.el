@@ -9,76 +9,133 @@
 ;; A cursor only in the selected window, none in the other splits
 (setq-default cursor-in-non-selected-windows nil)
 
-;; Echo area text at 60% of the buffer text size
-(dolist (buf '(" *Echo Area 0*" " *Echo Area 1*"))
-  (with-current-buffer (get-buffer-create buf)
-    (face-remap-add-relative 'default :height 0.6)))
-
 ;; Long messages show only their first line, rather than growing the echo area
 (setq message-truncate-lines t)
 
 ;;; Theme
-(use-package railscasts-reloaded-theme :defer t)
 
-;; Selections (visual mode) and the highlighted line are dark text on muted
-;; amber, in every theme; redone after each theme, since themes set these faces
-(defun my/selection-faces (&rest _)
-  (dolist (face '(region hl-line))
-    (when (facep face)
-      (set-face-attribute face nil
-                          :background "#c9a66b" :foreground "#1c1c1c"
-                          :distant-foreground 'unspecified))))
+;; The colors are the color scheme that tinty applies to every program
+;; (theme-select, $mod+Shift+t).  It writes the scheme for emacs as the theme
+;; base16-tinty, themes/base16-tinty-theme.el, drawn by the base16-theme
+;; package, and reloads it in a running daemon (`my/tinty-reload').
 
-(my/selection-faces)
-(add-hook 'enable-theme-functions #'my/selection-faces)
+(require 'color)
 
-;; Line numbers a little smaller than the text; redone after each theme,
-;; since themes set these faces
-(defun my/line-number-faces (&rest _)
-  (dolist (face '(line-number line-number-current-line))
-    (set-face-attribute face nil :height 0.85)))
+(defun my/mix (a b frac)
+  "Color A with FRAC of color B mixed in."
+  (apply #'color-rgb-to-hex
+         (append (color-blend (color-name-to-rgb b) (color-name-to-rgb a) frac)
+                 '(2))))
 
-(my/line-number-faces)
-(add-hook 'enable-theme-functions #'my/line-number-faces)
-(with-eval-after-load 'hl-line (my/selection-faces))
+(defun my/scheme-color (key &optional theme)
+  "Color KEY (:base00 .. :base0F) of THEME's scheme (default: the current
+theme), or nil when it isn't a base16 theme."
+  (let* ((theme (or theme (car custom-enabled-themes)))
+         (var (and theme (intern-soft (format "%s-theme-colors" theme)))))
+    (and var (boundp var) (plist-get (symbol-value var) key))))
 
-(use-package base16-theme               ; ~360 schemes: base16-<name>
-  :defer t
+;; Face tweaks that hold in every scheme.  Faces set in the `user' theme win
+;; over the loaded theme and only replace the attributes given, so these
+;; survive scheme switches without being redone.
+(custom-theme-set-faces
+ 'user
+ '(line-number              ((t :height 0.72)))
+ ;; the current line's number: bold, in the scheme's green (below), the same
+ ;; size (it inherits the height) and not highlighted
+ '(line-number-current-line ((t :inherit line-number :weight bold)))
+ '(corfu-default      ((t :height 0.75)))  ; completion popup text
+ ;; org: bigger headings, the folded-heading ellipsis without an underline
+ '(org-document-title ((t :height 1.5 :weight bold)))
+ '(org-level-1 ((t :height 1.3 :weight bold)))
+ '(org-level-2 ((t :height 1.15 :weight bold)))
+ '(org-level-3 ((t :height 1.05 :weight bold)))
+ '(org-ellipsis ((t :underline nil))))
+
+(use-package base16-theme
+  :demand t
   :init
   ;; The line-number margin and fringe on the normal background, not a
-  ;; separate shade (set before the saved theme loads below)
+  ;; separate shade (set before the theme loads below)
   (setq base16-theme-distinct-fringe-background nil))
-(use-package ef-themes :defer t)        ; ~34 polished light/dark themes
-(use-package doom-themes :defer t)      ; ~60 themes: doom-<name>
 
-;; The theme picked with consult-theme is remembered across restarts;
-;; Railscasts until one is picked (or if the saved one is gone)
-(defvar my/theme-file (locate-user-emacs-file "theme")
-  "File holding the name of the last theme picked.")
+;; tinty's theme file; Solarized Dark until a scheme has been applied
+(setq custom-theme-directory (locate-user-emacs-file "themes/"))
+(if (file-exists-p (expand-file-name "base16-tinty-theme.el" custom-theme-directory))
+    (load-theme 'base16-tinty t)
+  (load-theme 'base16-solarized-dark t))
 
-(defun my/save-theme (theme)
-  "Remember THEME for the next start."
-  (when theme
-    (with-temp-file my/theme-file
-      (prin1 theme (current-buffer)))))
+(defun my/tinty-reload ()
+  "Load the scheme tinty just wrote (run when the theme file changes).
+A daemon's own frame is a hidden terminal one, where the theme hooks that
+read colors from the frame see none, so the theme is loaded in an open
+emacs window when there is one; with none open, emacs works those colors
+out again in its next window (`my/recolor-new-frame')."
+  (interactive)
+  (let ((gui (seq-find #'display-graphic-p (frame-list))))
+    (with-selected-frame (or gui (selected-frame))
+      (mapc #'disable-theme custom-enabled-themes)
+      (load-theme 'base16-tinty t)))
+  ;; frames made from now on open in the new colors (see early-init.el)
+  (setf (alist-get 'background-color default-frame-alist) (my/scheme-color :base00)
+        (alist-get 'foreground-color default-frame-alist) (my/scheme-color :base05))
+  nil)
 
-(defun my/saved-theme ()
-  (ignore-errors
-    (with-temp-buffer
-      (insert-file-contents my/theme-file)
-      (read (current-buffer)))))
+;; Every emacs (the daemon, or one started on its own) watches the theme
+;; file, so a scheme picked with theme-select shows at once, everywhere
+(require 'filenotify)
 
-(unless (ignore-errors (load-theme (my/saved-theme) t))
-  (load-theme 'railscasts-reloaded t))
+(defvar my/tinty-reload-timer nil)
 
-;; consult-theme lists color themes only, and the pick is remembered:
-;; newcomers-presets changes settings (turns on the tab bar), light-blue
-;; is obsolete, and base16 is just the base16 package's helper file
-(with-eval-after-load 'consult
-  (setq consult-themes
-        (seq-difference (custom-available-themes)
-                        '(newcomers-presets light-blue base16)))
-  (advice-add 'consult-theme :after #'my/save-theme))
+(defun my/tinty-file-changed (event)
+  "Reload the theme once tinty has finished writing it (EVENT is a
+file-notify event in its directory)."
+  (pcase-let ((`(,_ ,action ,file ,new-name) event))
+    (when (and (memq action '(created changed renamed))
+               (equal (file-name-nondirectory (or new-name file))
+                      "base16-tinty-theme.el"))
+      ;; one write can come as several events: reload after the last
+      (when (timerp my/tinty-reload-timer)
+        (cancel-timer my/tinty-reload-timer))
+      (setq my/tinty-reload-timer
+            (run-with-timer 0.3 nil
+                            (lambda ()
+                              (with-demoted-errors "Reloading the theme: %S"
+                                (my/tinty-reload))))))))
+
+(make-directory custom-theme-directory t)
+(with-demoted-errors "Watching the theme file: %S"
+  (file-notify-add-watch custom-theme-directory '(change)
+                         #'my/tinty-file-changed))
+
+;; The scheme's accent (its yellow) on the jump labels (avy, M-SPC), one
+;; color for every label like qutebrowser's hints; the current line's
+;; number in its green, on the line numbers' own background; and the
+;; popup's border in its orange
+(defun my/scheme-faces (&optional theme)
+  (when-let* ((orange (my/scheme-color :base09 theme)))
+    (setq pop/border-color orange)
+    (when (frame-live-p pop/frame)
+      (set-face-background 'child-frame-border orange pop/frame)))
+  (let ((accent (my/scheme-color :base0A theme))
+        (text (my/scheme-color :base00 theme)))
+    (when (and accent text)
+      (dolist (face '(avy-lead-face avy-lead-face-0 avy-lead-face-1 avy-lead-face-2))
+        (face-spec-set face `((t :background ,accent :foreground ,text :weight bold))))))
+  (set-face-attribute 'line-number-current-line nil
+                      :foreground (or (my/scheme-color :base0B theme) 'unspecified)
+                      :background 'unspecified))
+
+(my/scheme-faces)
+(add-hook 'enable-theme-functions #'my/scheme-faces)
+
+;; A daemon loads the theme before any graphical frame exists, so the
+;; colors worked out from it (window borders, tab bar, mode line) come out
+;; wrong; work them out again in each new frame
+(defun my/recolor-new-frame ()
+  (when-let* ((theme (car custom-enabled-themes)))
+    (run-hook-with-args 'enable-theme-functions theme)))
+
+(add-hook 'server-after-make-frame-hook #'my/recolor-new-frame)
 
 ;;; Windows
 (use-package window
@@ -86,24 +143,16 @@
   :custom
   (window-combination-resize t))
 
-;; Borders between windows, the background with a quarter of the text
-;; color mixed in, so they show in every theme (some, like the doom ones,
-;; hide the default border); redone after each theme
-(setq window-divider-default-places t   ; between side-by-side and stacked
-      window-divider-default-right-width 2
-      window-divider-default-bottom-width 2)
-(window-divider-mode 1)
-
+;; Borders between windows (turned on by mini-echo, see modeline.el), the
+;; background with a quarter of the text color mixed in, so they show in
+;; every theme (some, like the doom ones, hide the default border); redone
+;; after each theme, since the color depends on it
 (defun my/divider-faces (&rest _)
   "Color the window borders from the current theme's colors."
   (let ((bg (face-background 'default nil t))
         (fg (face-foreground 'default nil t)))
     (when (and (color-defined-p bg) (color-defined-p fg))
-      (let ((line (apply #'color-rgb-to-hex
-                         (append (cl-mapcar (lambda (b f) (+ b (* 0.25 (- f b))))
-                                            (color-name-to-rgb bg)
-                                            (color-name-to-rgb fg))
-                                 '(2)))))
+      (let ((line (my/mix bg fg 0.25)))
         (dolist (face '(window-divider window-divider-first-pixel
                         window-divider-last-pixel vertical-border))
           (set-face-attribute face nil :foreground line :background line))))))
@@ -139,101 +188,26 @@
   :hook
   (treemacs-mode . (lambda ()        ; text at 75%
                      (face-remap-add-relative 'default :height 0.75)))
-  (treemacs-mode . my/treemacs-preview-setup)
+  (treemacs-mode . my/treemacs-peek-setup)
+  :bind (:map treemacs-mode-map
+         ;; open the file at point in a split beside the window you came from
+         ("C-<return>" . treemacs-visit-node-horizontal-split))
   :custom
   (treemacs-no-png-images t)         ; no icons, just +/- on directories
   (treemacs-width 22)                ; columns (default 35)
   :config
-  (add-hook 'window-selection-change-functions #'my/treemacs-keep-preview)
   (treemacs-follow-mode 1)           ; highlight the file you're in
   (treemacs-project-follow-mode 1))  ; switch projects as you do
 
-;; Preview: resting on a file in treemacs shows it in the window you came
-;; from.  A file opened only to preview is closed as soon as the preview
-;; moves on, so at most one exists; leaving treemacs keeps whatever is
-;; showing.  (treemacs-peek-mode only cleans up on some ways of leaving.)
-(declare-function treemacs-current-button "treemacs-core-utils")
-(declare-function treemacs-button-get "treemacs-core-utils")
+;; Resting on a file shows it in the window you came from; files opened
+;; only for that are closed again when you leave treemacs.  Peek mode ends
+;; itself on leaving treemacs, so it's turned on again on every visit.
+(defun my/treemacs-peek-on-enter (window)
+  (when (and (eq window (selected-window)) (not treemacs-peek-mode))
+    (treemacs-peek-mode 1)))
 
-(defvar my/treemacs-preview-buffer nil
-  "Buffer opened only for previewing, or nil.")
-
-(defvar my/treemacs-preview-timer nil)
-
-(defvar my/treemacs-origin nil
-  "(WINDOW BUFFER START POINT): the previewing window, before previews.")
-
-(defun my/treemacs-preview (treemacs-buf)
-  "Show the file at point in TREEMACS-BUF in the most recent other window."
-  (when (eq (window-buffer (selected-window)) treemacs-buf)
-    (with-current-buffer treemacs-buf
-      (let* ((button (treemacs-current-button))
-             (path (and button (treemacs-button-get button :path)))
-             (win (get-mru-window nil nil t)))
-        (when (and (stringp path) (file-regular-p path) (window-live-p win))
-          (unless my/treemacs-origin
-            (setq my/treemacs-origin (list win (window-buffer win)
-                                           (window-start win) (window-point win))))
-          (let* ((existing (get-file-buffer path))
-                 (buf (or existing
-                          (let ((inhibit-message t))
-                            (find-file-noselect path))))
-                 (old my/treemacs-preview-buffer))
-            (set-window-buffer win buf)
-            (setq my/treemacs-preview-buffer (unless existing buf))
-            (when (and (buffer-live-p old) (not (eq old buf))
-                       (not (get-buffer-window old t)))
-              (kill-buffer old))))))))
-
-(defun my/treemacs-preview-soon ()
-  "Preview once the cursor rests, so scrolling past files doesn't open them."
-  (when (timerp my/treemacs-preview-timer)
-    (cancel-timer my/treemacs-preview-timer))
-  (setq my/treemacs-preview-timer
-        (run-with-idle-timer 0.15 nil #'my/treemacs-preview (current-buffer))))
-
-(defun my/treemacs-preview-setup ()
-  (add-hook 'post-command-hook #'my/treemacs-preview-soon nil t))
-
-(defun my/treemacs-keep-preview (&rest _)
-  "Leaving treemacs, by any route, keeps the previewed file open."
-  (unless (with-current-buffer (window-buffer (selected-window))
-            (derived-mode-p 'treemacs-mode))
-    (setq my/treemacs-preview-buffer nil
-          my/treemacs-origin nil)))
-
-;; C-<return> opens the file at point in a new split to the right of the
-;; window treemacs came from, like dired's; that window first goes back
-;; to what it showed before any previewing
-(defun my/treemacs-open-in-split ()
-  "Open the file at point in a split right of the window treemacs came from."
-  (interactive)
-  (let* ((button (treemacs-current-button))
-         (path (and button (treemacs-button-get button :path)))
-         (win (get-mru-window nil nil t))
-         (preview my/treemacs-preview-buffer))
-    (unless (and (stringp path) (file-regular-p path))
-      (user-error "Not on a file"))
-    (unless (window-live-p win)
-      (user-error "No window to split"))
-    (when (timerp my/treemacs-preview-timer)
-      (cancel-timer my/treemacs-preview-timer))
-    (pcase my/treemacs-origin
-      (`(,owin ,buf ,start ,pt)
-       (when (and (eq owin win) (buffer-live-p buf))
-         (set-window-buffer win buf)
-         (set-window-start win start)
-         (set-window-point win pt))))
-    (setq my/treemacs-preview-buffer nil
-          my/treemacs-origin nil)
-    (select-window (split-window win nil 'right))
-    (find-file path)
-    ;; A preview of some other file, now shown nowhere
-    (when (and (buffer-live-p preview) (not (get-buffer-window preview t)))
-      (kill-buffer preview))))
-
-(with-eval-after-load 'treemacs
-  (keymap-set treemacs-mode-map "C-<return>" #'my/treemacs-open-in-split))
+(defun my/treemacs-peek-setup ()
+  (add-hook 'window-selection-change-functions #'my/treemacs-peek-on-enter nil t))
 
 (use-package treemacs-evil           ; j/k and friends inside treemacs
   :after (treemacs evil))
@@ -251,11 +225,6 @@
                 (evil-define-key 'normal dired-mode-map
                   "=" #'dired-create-empty-file   ; the +/= key on its own
                   "+" #'dired-create-directory))))) ; with Shift
-
-(declare-function dired-get-file-for-visit "dired")
-(declare-function dired-find-file "dired")
-(declare-function dired-goto-file "dired")
-(declare-function dired-noselect "dired")
 
 (defun pop/dired-here ()
   "A dired buffer at the main buffer's directory, on the file you came from."
@@ -306,11 +275,6 @@
   :hook
   (ibuffer . (lambda ()
                (setq ibuffer-filter-groups (ibuffer-project-generate-filter-groups)))))
-
-(declare-function ibuffer "ibuffer")
-(declare-function ibuffer-update "ibuffer")
-(declare-function ibuffer-current-buffer "ibuffer")
-(declare-function ibuffer-jump-to-buffer "ibuffer")
 
 (defun pop/ibuffer-here ()
   "A fresh ibuffer list, with the cursor on the buffer you came from."

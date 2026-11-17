@@ -1,0 +1,30 @@
+# i3 colors: {{scheme-name}} (written by tinty; edits are overwritten).
+# Included by ~/.config/i3/config. The bar block lives here too, since i3
+# doesn't pass variables from an included file back to the main config.
+
+# Window colors:          border      background  text        indicator   child_border
+client.focused            #{{base0A-hex}}     #{{base0A-hex}}     #{{base00-hex}}     #{{base0A-hex}}     #{{base0A-hex}}
+client.focused_inactive   #{{base02-hex}}     #{{base02-hex}}     #{{base05-hex}}     #{{base02-hex}}     #{{base02-hex}}
+client.unfocused          #{{base01-hex}}     #{{base01-hex}}     #{{base04-hex}}     #{{base01-hex}}     #{{base01-hex}}
+client.urgent             #{{base08-hex}}     #{{base08-hex}}     #{{base00-hex}}     #{{base08-hex}}     #{{base08-hex}}
+client.background         #{{base00-hex}}
+
+bar {
+        position top
+        status_command ~/.config/bumblebee-status/launch.sh
+        font pango:FiraCode Nerd Font 9
+        # the focused workspace number is drawn by the status line instead
+        workspace_buttons no
+
+        colors {
+            background #{{base00-hex}}
+            statusline #{{base05-hex}}
+            separator  #{{base03-hex}}
+
+            #                  border      background  text
+            focused_workspace  #{{base05-hex}}     #{{base05-hex}}     #{{base00-hex}}
+            active_workspace   #{{base00-hex}}     #{{base00-hex}}     #{{base05-hex}}
+            inactive_workspace #{{base00-hex}}     #{{base00-hex}}     #{{base05-hex}}
+            urgent_workspace   #{{base08-hex}}     #{{base08-hex}}     #{{base00-hex}}
+        }
+}

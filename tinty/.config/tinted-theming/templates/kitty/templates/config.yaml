@@ -1,0 +1,6 @@
+# Rendered by `tinty build` (theme-select runs it when a template changes)
+# into themes/, one file per scheme; tinty apply copies the chosen one into
+# place (see ../../tinty/config.toml).
+default:
+  filename: themes/{{ scheme-system }}-{{ scheme-slug }}.conf
+  supported-systems: [base16, base24]

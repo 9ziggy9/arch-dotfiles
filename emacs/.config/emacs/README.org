@@ -47,17 +47,16 @@ offers to make one.  Keys are vim-style (evil-collection).
 | b b / b c | switch branch / new branch                    |
 | L l       | log                                           |
 | q         | close                                         |
-** GitHub (gh)
-@ in magit (or @ in the ? menu) opens the gh menu.  Needs =gh auth login= once.
-| c | create the repo on GitHub as origin, and push (asks name, visibility) |
-| C | clone a GitHub repo, then open it in magit                          |
-| r | list your repos                                                     |
-| b | open this repo in the browser                                       |
-| p | create a pull request for this branch (browser)                     |
-| v | this branch's pull request (browser)                                |
-| l | list pull requests                                                  |
-| i / I | create an issue (browser) / list issues                         |
-| o | the gh output popup                                                 |
+** GitHub (forge)
+N in magit opens forge's menu.  Needs a GitHub token in =~/.authinfo= once
+(forge manual, "Setup for Github"); then =N / a= adds the repo, and its
+pull requests and issues show in the status buffer.
+| N c p / N c i | create a pull request / an issue                |
+| N l t         | list pull requests and issues (topics)          |
+| N b r / N b p | this repo / a pull request, in the browser      |
+| M-x magit-clone | clone: owner/name, or name for your own       |
+Making a GitHub repo from this one: M-x my/gh-repo-create (runs gh, so
+=gh auth login= once).
 
 * C
 Macro bodies are highlighted like any other code.  In a macro, RET (and

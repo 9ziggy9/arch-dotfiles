@@ -1,111 +1,72 @@
 #!/usr/bin/env bash
-# Pick an emacs theme with rofi and switch everything to it: emacs, kitty, the
-# status bar and rofi itself. Bound to $mod+Shift+t in i3.
+# Pick a base16/base24 color scheme with rofi and switch everything to it
+# through tinty: kitty, the shell, i3 and its bar, rofi, qutebrowser and
+# emacs. Bound to $mod+Shift+t in i3.
 #
 #   theme-select           pick with rofi
-#   theme-select THEME     switch straight to THEME
+#   theme-select SCHEME    switch straight to SCHEME, e.g. base16-nord
 #
-# Kitty's colors are made from the emacs theme by
-# ~/.config/kitty/emacs-theme-to-kitty.el; the bar and rofi colors are made
-# from kitty's.
+# What each program gets is a template in ~/.config/tinted-theming/templates;
+# how it's put in place and reloaded is in ~/.config/tinted-theming/tinty/
+# config.toml.
 
-kitty_dir="$HOME/.config/kitty"
-emacs_dir="$HOME/.config/emacs"
-converter="$kitty_dir/emacs-theme-to-kitty.el"
+export PATH="$HOME/.cargo/bin:$PATH"   # tinty; X sessions don't read .zshrc
+templates="$HOME/.config/tinted-theming/templates"
 cache="${XDG_CACHE_HOME:-$HOME/.cache}/theme-select"
 mkdir -p "$cache"
 
-convert() { /usr/bin/emacs --batch -Q -l "$converter" "$@" 2>/dev/null; }
 fail() { notify-send -u critical "theme" "$1" 2>/dev/null; echo "$1" >&2; exit 1; }
 
-# Emacs theme names, re-listed only after packages or the converter change
-list="$cache/emacs-themes"
-if [ ! -s "$list" ] || [ -n "$(find -H "$emacs_dir/elpa" "$converter" -maxdepth 1 -newer "$list" -print -quit)" ]; then
-    convert --list > "$list.tmp" && mv "$list.tmp" "$list"
+command -v tinty >/dev/null || fail "tinty is not installed: cargo install --locked tinty"
+
+# The schemes and templates, fetched or linked in on first use
+if [ ! -d "$(tinty config --data-dir-path)/scheme-repos/schemes" ]; then
+    tinty sync -q || fail "tinty sync failed"
 fi
 
-# Each theme's background and foreground ("THEME BG FG" lines), so the picker
-# can show every row in its own theme's colors; remade along with the list
-colors="$cache/emacs-theme-colors"
-if [ ! -s "$colors" ] || [ "$list" -nt "$colors" ]; then
-    convert --colors > "$colors.tmp" && mv "$colors.tmp" "$colors"
+# Templates are rendered for every scheme ahead of time (a few seconds);
+# render again whenever one has changed since
+built="$cache/built"
+if [ ! -e "$built" ] || [ -n "$(find -L "$templates" -path '*/themes' -prune -o -type f -newer "$built" -print -quit)" ]; then
+    tinty build -q || fail "tinty build failed"
+    touch "$built"
 fi
 
-current="$(cat "$emacs_dir/theme" 2>/dev/null)"
+# Every scheme as "ID BACKGROUND FOREGROUND", so each row of the picker can
+# show the scheme's own colors (base16 and base24 only: the templates don't
+# do tinty's newer tinted8 schemes, whose colors have other names)
+schemes="$cache/schemes"
+if [ ! -s "$schemes" ] || [ "$built" -nt "$schemes" ]; then
+    tinty list --json | python3 -Ic '
+import json, sys
+for s in sorted(json.load(sys.stdin), key=lambda s: s["id"]):
+    if s["system"] not in ("base16", "base24"):
+        continue
+    p = s["palette"]
+    print(s["id"], p["base00"]["hex_str"], p["base05"]["hex_str"])' > "$schemes.tmp" \
+        && mv "$schemes.tmp" "$schemes" || fail "Could not list the schemes"
+fi
+
+current="$(tinty current 2>/dev/null)"
 
 choice="$1"
 if [ -z "$choice" ]; then
-    row="$(awk -v c="$current" '$0==c{print NR-1; f=1; exit} END{if(!f) print 0}' "$list")"
-    # Rows are pango markup: the name on a band of the theme's own colors,
+    row="$(awk -v c="$current" '$1==c{print NR-1; f=1; exit} END{if(!f) print 0}' "$schemes")"
+    # Rows are pango markup: the name on a band of the scheme's own colors,
     # padded with spaces so the band runs the width of the popup. rofi hands
-    # back the row number (-format i), which picks the name from the list.
+    # back the row number (-format i), which picks the scheme from the list.
     # The selected row shows as a ring of the selection color around its band.
     width=95   # characters across a row of the 768px popup (no margin) in its 10pt mono font
-    picked="$(awk -v w="$width" 'NR==FNR { bg[$1]=$2; fg[$1]=$3; next }
-        { t=$0; gsub(/&/,"\\&amp;",t); gsub(/</,"\\&lt;",t)
-          b=($0 in bg) ? bg[$0] : "#000000"; f=($0 in fg) ? fg[$0] : "#ffffff"
-          printf "<span background=\"%s\" foreground=\"%s\"> %-*s</span>\n", b, f, w-1, t }' \
-        "$colors" "$list" \
+    picked="$(awk -v w="$width" '{ printf "<span background=\"%s\" foreground=\"%s\"> %-*s</span>\n", $2, $3, w-1, $1 }' "$schemes" \
       | rofi -dmenu -i -no-show-icons -markup-rows -format i -p "theme" \
           -mesg "current: ${current:-?}" -selected-row "$row" \
           -theme-str 'element { padding: 3px; }
                       element normal.normal, element alternate.normal { background-color: @bg; }
                       element-text { background-color: transparent; }')"
     [ -z "$picked" ] && exit 0
-    choice="$(sed -n "$((picked + 1))p" "$list")"
+    choice="$(awk -v n="$((picked + 1))" 'NR==n{print $1}' "$schemes")"
 fi
-grep -qxF "$choice" "$list" || fail "No such theme: $choice"
+awk -v c="$choice" '$1==c{f=1} END{exit !f}' "$schemes" || fail "No such scheme: $choice"
 
-# kitty: convert the emacs theme (once; kept in the cache) and reload
-src="$cache/$choice.conf"
-if [ ! -s "$src" ] || [ "$converter" -nt "$src" ]; then
-    convert "$choice" > "$src.tmp" && grep -q '^color15 ' "$src.tmp" \
-        || { rm -f "$src.tmp"; fail "Could not convert emacs theme $choice"; }
-    mv "$src.tmp" "$src"
-fi
-cp "$src" "$kitty_dir/current-theme.conf"
-pkill -USR1 -x kitty            # every running kitty reloads its config
-
-# rofi and the status bar take their colors from kitty's
-"$HOME/.config/rofi/kitty-colors.sh"
-python3 -I "$HOME/.config/bumblebee-status/bar-theme.py"
-i3-msg -q restart               # restarts the bar with the new colors (windows stay put)
-
-# qutebrowser reads kitty's colors in its config.py: reload it if it is running
-# (only then: the qutebrowser command would otherwise start a new browser)
-if pgrep -f '^(/usr/bin/)?python3? .*/usr/bin/qutebrowser' >/dev/null; then
-    qutebrowser ':config-source' >/dev/null 2>&1 &
-fi
-
-# emacs: new frames open in the theme's colors rather than flashing white
-# (read by early-init.el); kitty's colors came from this theme, so they match
-bg="$(awk '$1=="background"{print $2; exit}' "$src")"
-fg="$(awk '$1=="foreground"{print $2; exit}' "$src")"
-printf '("%s" . "%s")\n' "$bg" "$fg" > "$emacs_dir/theme-colors"
-
-# emacs: switch the running daemon (and the colors its next frames open in),
-# which also saves the choice for the next start (my/save-theme in ui.el).
-# emacsclient code runs in the daemon's hidden terminal frame, where the theme
-# hooks that read colors from the frame (window dividers, mode-line band) see
-# none, so the switch runs in an open emacs window; with none open, those
-# hooks run again in the next window. Without a daemon, just save the choice.
-elisp="$(cat <<ELISP
-(let ((gui (seq-find #'display-graphic-p (frame-list))))
-  (setf (alist-get 'background-color default-frame-alist) "$bg"
-        (alist-get 'foreground-color default-frame-alist) "$fg")
-  (with-selected-frame (or gui (selected-frame))
-    (mapc #'disable-theme custom-enabled-themes)
-    (load-theme '$choice t)
-    (my/save-theme '$choice))
-  (unless gui
-    (defalias 'theme-select--redo
-      (lambda ()
-        (remove-hook 'server-after-make-frame-hook 'theme-select--redo)
-        (run-hook-with-args 'enable-theme-functions '$choice)))
-    (add-hook 'server-after-make-frame-hook 'theme-select--redo)))
-ELISP
-)"
-if ! timeout 10 emacsclient -e "$elisp" >/dev/null 2>&1; then
-    printf '%s' "$choice" > "$emacs_dir/theme"
-fi
-exit 0
+# Every program's colors, each reloaded by its hook (config.toml)
+tinty apply "$choice" || fail "tinty apply $choice failed"

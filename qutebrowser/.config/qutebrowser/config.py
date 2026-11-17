@@ -6,41 +6,41 @@ config.load_autoconfig(False)
 
 
 # ------------------------------------------------------------------ colors
-# Taken from the kitty theme, which theme-select ($mod+Shift+t) writes from the
-# emacs theme, so the browser matches emacs, kitty, rofi and the status bar.
-# theme-select reloads this file in a running qutebrowser (:config-source).
+# The color scheme's 16 colors, from ~/.config/qutebrowser/scheme, which tinty
+# writes (theme-select, $mod+Shift+t) along with every other program's colors;
+# it reloads this file in a running qutebrowser (:config-source).
 
 import os
 import re
 
-def kitty_colors(path=os.path.expanduser("~/.config/kitty/current-theme.conf")):
+def scheme_colors(path=os.path.expanduser("~/.config/qutebrowser/scheme")):
     colors = {}
     try:
         with open(path) as f:
             for line in f:
-                m = re.match(r"\s*(\w+)\s+(#[0-9a-fA-F]{6})\s*$", line)
+                m = re.match(r"\s*(base0[0-9A-F])\s+(#[0-9a-fA-F]{6})\s*$", line)
                 if m:
                     colors[m.group(1)] = m.group(2)
     except OSError:
         pass
     return colors
 
-k = kitty_colors()
-bg       = k.get("background", "#282828")
-fg       = k.get("foreground", "#ebdbb2")
-alt_bg   = k.get("inactive_tab_background", k.get("color0", bg))
-dim      = k.get("inactive_tab_foreground", k.get("color8", fg))
-sel_bg   = k.get("active_tab_background", k.get("selection_background", "#c9a66b"))
-sel_fg   = k.get("active_tab_foreground", k.get("selection_foreground", "#1c1c1c"))
-accent   = k.get("cursor", k.get("color4", fg))
-red      = k.get("color1", "#cc241d")
-green    = k.get("color2", "#98971a")
-yellow   = k.get("color3", "#d79921")
-blue     = k.get("color4", "#458588")
-border   = k.get("inactive_border_color", alt_bg)
+s = scheme_colors()
+bg       = s.get("base00", "#282828")
+fg       = s.get("base05", "#ebdbb2")
+alt_bg   = s.get("base01", bg)     # the shade above the background
+dim      = s.get("base04", fg)     # muted text
+sel_bg   = s.get("base0A", fg)     # the accent: selected tab, hints, selections
+sel_fg   = bg
+accent   = s.get("base0D", fg)
+red      = s.get("base08", "#cc241d")
+green    = s.get("base0B", "#98971a")
+yellow   = s.get("base0A", "#d79921")
+blue     = s.get("base0D", "#458588")
+border   = s.get("base02", alt_bg)
 
 # Tabs: every tab on the muted shade; the selected one is told apart by its
-# amber bold title (fonts.tabs.selected, below) rather than an amber tab
+# accent-colored bold title (fonts.tabs.selected, below)
 c.colors.tabs.bar.bg = bg
 for kind in ("even", "odd"):
     setattr(getattr(c.colors.tabs, kind), "bg", alt_bg)
@@ -97,7 +97,7 @@ c.colors.completion.match.fg = accent
 c.colors.completion.scrollbar.bg = bg
 c.colors.completion.scrollbar.fg = dim
 
-# Link hints (f): the selection amber, like rofi's selected row
+# Link hints (f): the scheme's accent, like rofi's selected row
 c.colors.hints.bg = sel_bg
 c.colors.hints.fg = sel_fg
 c.colors.hints.match.fg = red

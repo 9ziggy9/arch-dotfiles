@@ -34,8 +34,6 @@
   (when (looking-back "<[[:alpha:]]*" (line-beginning-position))
     (tempel-complete)))
 
-(defvar corfu-on-exact-match)
-
 (defun my/tempel-setup ()
   "Offer snippets in the completion popup, ahead of other completions."
   (add-hook 'completion-at-point-functions #'my/tempel-complete -90 t)
@@ -45,11 +43,12 @@
 
 ;;; Live PDF preview
 
-;; The pdf slot shows the document as a PDF in a split on its right,
-;; rebuilt by LaTeX in the background every time you save; the slot
-;; again stops it.  A .tex file is built as it is; an org file is first
-;; exported to a .tex next to it, as with export.  The PDF and LaTeX's
-;; other files go to a temporary directory.
+;; The pdf slot shows the document as a PDF in a split on its right; the
+;; slot again stops it.  latexmk runs in the background in watch mode
+;; (-pvc), rebuilding whenever the .tex changes, and the PDF view reloads
+;; itself (global-auto-revert-mode, init.el).  A .tex file is built as it
+;; is; an org file is exported to a .tex next to it on every save, as with
+;; export.  The PDF and LaTeX's other files go to a temporary directory.
 
 (use-package pdf-tools                  ; PDFs open in pdf-view-mode
   :defer t
@@ -61,10 +60,7 @@
   (advice-add 'pdf-cache--prefetch-start :before-while
               (lambda (&rest _) (pdf-view-current-page))))
 
-(declare-function org-latex-export-to-latex "ox-latex")
-
-(defvar-local my/pdf-process nil "The running LaTeX build, if any.")
-(defvar-local my/pdf-again nil "Saved during a build: build once more after.")
+(defvar-local my/pdf-process nil "The running latexmk, if any.")
 
 (defun my/pdf-file ()
   "Where the current document's preview PDF goes."
@@ -72,73 +68,55 @@
                     (file-name-concat temporary-file-directory "pdf-preview"
                                       (md5 buffer-file-name))))
 
-(defun my/pdf-tex-file ()
-  "The .tex file to build: this file, or an org file's export."
-  (if (derived-mode-p 'org-mode)
-      (expand-file-name (org-latex-export-to-latex))
-    buffer-file-name))
+(defun my/pdf-export ()
+  "Export this org file to the .tex latexmk is watching; return its name."
+  (expand-file-name (org-latex-export-to-latex)))
 
-(defun my/pdf-build ()
-  "Build the PDF in the background."
-  (if (process-live-p my/pdf-process)
-      (setq my/pdf-again t)
-    (unless (executable-find "latexmk")
-      (user-error "No latexmk: install TeX Live (see README)"))
-    (let ((tex (my/pdf-tex-file))
-          (pdf (my/pdf-file))
-          (buf (current-buffer)))
-      (make-directory (file-name-directory pdf) t)
-      (with-current-buffer (get-buffer-create "*pdf build*")
-        (erase-buffer))
-      (setq my/pdf-process
-            (make-process
-             :name "pdf-build"
-             :buffer "*pdf build*"
-             :command (list "latexmk" "-pdf" "-interaction=nonstopmode"
-                            "-halt-on-error"
-                            (concat "-outdir=" (file-name-directory pdf))
-                            (file-name-nondirectory tex))
-             :sentinel (lambda (proc _)
-                         (unless (process-live-p proc)
-                           (my/pdf-done buf pdf (process-exit-status proc)))))))))
+(defun my/pdf-output (buf pdf)
+  "A process filter: report latexmk's progress, and show PDF beside BUF
+once it's first built."
+  (lambda (_proc text)
+    (cond ((string-match "^! .*" text)
+           (message "LaTeX failed: %s" (match-string 0 text)))
+          ((and (string-match-p "Output written on" text) (buffer-live-p buf))
+           (message "PDF updated")
+           ;; Not from inside the filter: opening a PDF waits on pdf-tools'
+           ;; own process, which a filter can't
+           (run-at-time 0 nil #'my/pdf-show buf pdf)))))
 
-(defun my/pdf-error ()
-  "LaTeX's first error, from the build log, e.g. \"! Undefined control sequence\"."
-  (with-current-buffer "*pdf build*"
-    (goto-char (point-min))
-    (if (re-search-forward "^! .*" nil t)
-        (match-string 0)
-      "see *pdf build*")))
-
-(defun my/pdf-done (buf pdf status)
-  "Show the new PDF beside BUF, or say why LaTeX failed."
-  (when (buffer-live-p buf)
-    (with-current-buffer buf
-      (if (/= status 0)
-          (message "LaTeX failed: %s" (my/pdf-error))
-        (let ((view (find-buffer-visiting pdf))
-              (win (get-buffer-window buf)))
-          (cond (view (with-current-buffer view (revert-buffer t t t)))
-                ;; Opened from inside its window, so pdf-tools sizes the
-                ;; pages for that window from the start
-                (win (with-selected-window (split-window win nil 'right)
-                       (find-file pdf)))))
-        (message "PDF updated"))
-      (when my/pdf-again
-        (setq my/pdf-again nil)
-        (my/pdf-build)))))
+(defun my/pdf-show (buf pdf)
+  "Show PDF in a split right of BUF's window, unless it's showing already."
+  (let ((win (get-buffer-window buf)))
+    (unless (or (find-buffer-visiting pdf) (not win))
+      ;; Opened from inside its window, so pdf-tools sizes the pages for
+      ;; that window from the start
+      (with-selected-window (split-window win nil 'right)
+        (find-file pdf)))))
 
 (define-minor-mode my/pdf-mode
-  "Keep a PDF of this document beside it, rebuilt on every save."
+  "Keep a PDF of this document beside it, rebuilt as it changes."
   :lighter nil
   (if my/pdf-mode
-      (progn
-        (add-hook 'after-save-hook #'my/pdf-build nil t)
-        (condition-case err
-            (my/pdf-build)
-          (error (my/pdf-mode -1)
-                 (signal (car err) (cdr err)))))
-    (remove-hook 'after-save-hook #'my/pdf-build t)
+      (let ((tex (if (derived-mode-p 'org-mode) (my/pdf-export) buffer-file-name))
+            (pdf (my/pdf-file)))
+        (unless (executable-find "latexmk")
+          (setq my/pdf-mode nil)
+          (user-error "No latexmk: install TeX Live (see README)"))
+        (when (derived-mode-p 'org-mode)
+          (add-hook 'after-save-hook #'my/pdf-export nil t))
+        (add-hook 'kill-buffer-hook (lambda () (my/pdf-mode -1)) nil t)
+        (make-directory (file-name-directory pdf) t)
+        (setq my/pdf-process
+              (make-process
+               :name "pdf-build" :buffer " *pdf build*" :noquery t
+               :command (list "latexmk" "-pdf" "-pvc" "-view=none"
+                              "-interaction=nonstopmode" "-halt-on-error"
+                              (concat "-outdir=" (file-name-directory pdf))
+                              (file-name-nondirectory tex))
+               :filter (my/pdf-output (current-buffer) pdf))))
+    (remove-hook 'after-save-hook #'my/pdf-export t)
+    (when (process-live-p my/pdf-process)
+      (kill-process my/pdf-process))
     (when-let* ((view (and buffer-file-name (find-buffer-visiting (my/pdf-file)))))
       (dolist (win (get-buffer-window-list view nil t))
         (delete-window win))
@@ -147,8 +125,7 @@
 (defun my/pdf-toggle ()
   "Start or stop the live PDF preview of the org or LaTeX file you're in."
   (interactive)
-  (when (eq (selected-frame) pop/frame)
-    (pop/hide))
+  (pop/leave)
   (unless (and (derived-mode-p 'org-mode 'latex-mode) buffer-file-name)
     (user-error "The PDF preview is for org and LaTeX files"))
   (my/pdf-mode 'toggle))

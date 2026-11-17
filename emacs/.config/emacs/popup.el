@@ -17,7 +17,8 @@
 ;;;; Settings
 
 (defvar pop/border-color "#cc7833"
-  "Color of the border around the popup (Railscasts orange).")
+  "Color of the border around the popup; ui.el sets it to the color
+scheme's orange with every scheme.")
 
 (defvar pop/border-width 3
   "Width of the border around the popup, in pixels.")
@@ -87,50 +88,16 @@ like evil-collection do bind it, so popup keys are bound under both.")
 (defun pop/format-hints (pairs)
   "Hint line from PAIRS (KEY TEXT ...), or nil if there are none."
   (when pairs
-    (propertize
-     (mapconcat (lambda (pair)
-                  (concat (propertize (car pair) 'face 'pop/hint-key) " "
-                          (propertize (cadr pair) 'face 'pop/hint-text)))
-                (seq-split pairs 2)
-                "  ")
-     'local-map pop/hint-scroll-map
-     'help-echo "Scroll here to see more")))
-
-;; The hint line is the popup's mode line, which can't scroll by itself;
-;; the mouse wheel over it shifts the text instead
-
-(defvar pop/hint-offset 0
-  "How many characters the hint line is scrolled to the right.")
-
-(defun pop/scroll-hints (n)
-  "Scroll the hint line N characters (negative scrolls back)."
-  (let ((len (length (or (pop/prop (pop/current-type) :hints) ""))))
-    (setq pop/hint-offset (max 0 (min (+ pop/hint-offset n) (1- len))))
-    (force-mode-line-update t)))
-
-(defun pop/scroll-hints-forward ()
-  "Show more of the hint line."
-  (interactive)
-  (pop/scroll-hints 8))
-
-(defun pop/scroll-hints-back ()
-  "Show the start of the hint line again."
-  (interactive)
-  (pop/scroll-hints -8))
-
-(defvar-keymap pop/hint-scroll-map
-  "<mode-line> <wheel-down>"  #'pop/scroll-hints-forward
-  "<mode-line> <wheel-right>" #'pop/scroll-hints-forward
-  "<mode-line> <wheel-up>"    #'pop/scroll-hints-back
-  "<mode-line> <wheel-left>"  #'pop/scroll-hints-back)
+    (mapconcat (lambda (pair)
+                 (concat (propertize (car pair) 'face 'pop/hint-key) " "
+                         (propertize (cadr pair) 'face 'pop/hint-text)))
+               (seq-split pairs 2)
+               "  ")))
 
 (defun pop/hint-line ()
-  "The current popup's hints, scrolled by `pop/hint-offset'."
+  "The current popup's hints."
   (when-let* ((hints (pop/prop (pop/type-of (current-buffer)) :hints)))
-    (if (zerop pop/hint-offset)
-        (concat " " hints)
-      (concat (propertize " « " 'face 'pop/hint-key 'local-map pop/hint-scroll-map)
-              (substring hints (min pop/hint-offset (1- (length hints))))))))
+    (concat " " hints)))
 
 (defmacro pop/define (name &rest props)
   "Define a popup type NAME and a `pop/NAME-toggle' command for it.
@@ -145,7 +112,7 @@ like evil-collection do bind it, so popup keys are bound under both.")
 :keep KEYS     universal keys to keep anyway, e.g. (\"C-h\" \"C-=\")
 :keys (KEY COMMAND ...)  bindings that beat everything in this popup
 :hints (KEY TEXT ...)    key reminders shown along the popup's bottom
-? shows every key that works in the popup, from its keymaps (see below)."
+? lists every key that works in the popup (`pop/show-keys')."
   (let ((map (intern (format "pop/%s-map" name)))
         (toggle (intern (format "pop/%s-toggle" name)))
         (keys (plist-get props :keys)))
@@ -174,7 +141,6 @@ like evil-collection do bind it, so popup keys are bound under both.")
 
 ;;;; Helpers for popup types
 
-(declare-function face-remap-remove-relative "face-remap")
 (defvar-local pop/text-scale-cookie nil)
 
 (defun pop/text-scale (factor)
@@ -261,7 +227,6 @@ like evil-collection do bind it, so popup keys are bound under both.")
       ;; so an :open function can position the cursor before showing
       (set-window-point win (with-current-buffer buffer (point)))
       ;; The mode line becomes the type's hint line, or goes away
-      (setq pop/hint-offset 0)
       (set-window-parameter win 'mode-line-format
                             (if (and type (pop/prop type :hints))
                                 '(:eval (pop/hint-line))
@@ -321,6 +286,11 @@ like evil-collection do bind it, so popup keys are bound under both.")
           (message "No %s buffers yet" type)
         (pop/display buf nil)
         (pop/focus)))))
+
+(defun pop/leave ()
+  "If the popup has focus, hide it, so the caller acts on the main frame."
+  (when (and (pop/live-p) (eq (selected-frame) pop/frame))
+    (pop/hide)))
 
 (defun pop/close-or-delete-window ()
   "In the popup, hide it and kill its buffer; elsewhere, delete the window."
@@ -398,168 +368,14 @@ like evil-collection do bind it, so popup keys are bound under both.")
 
 ;;;; Key reference
 
-;; ? in a popup swaps in a sheet of every key that works there: the
-;; type's :keys, then the buffer's mode keys (evil's for the mode
-;; included), each described by its command's first doc line.  It's
-;; built from the keymaps each time, so it never goes stale.  ?, escape
-;; or q bring back what was there.
+;; ? in a popup lists every key that works there, the popup's own keys
+;; included, each with its command, to search and run (embark)
 
-(defface pop/keys-title '((t :inherit font-lock-function-name-face :weight bold :height 1.3))
-  "Face for the key reference's title.")
-
-(defface pop/keys-heading '((t :inherit font-lock-type-face :weight bold))
-  "Face for a group heading in the key reference.")
-
-(defface pop/keys-key '((t :inherit font-lock-keyword-face :weight bold))
-  "Face for a key in the key reference.")
-
-(define-derived-mode pop/keys-mode special-mode "Keys"
-  "A popup's key reference."
-  (setq-local cursor-type nil
-              truncate-lines t)
-  (hl-line-mode 1))                     ; the line a search lands on
-
-(defvar pop/keys-return nil
-  "The popup buffer the key reference was opened from.")
-
-(defvar pop/keys-skip '(digit-argument negative-argument universal-argument
-                       undefined ignore self-insert-command)
-  "Commands left out of the key reference.")
-
-(defun pop/keymap-bindings (map)
-  "Alist of (KEY . COMMAND) for MAP's keyboard bindings, prefixes followed."
-  (let (out)
-    (named-let walk ((map map) (prefix []))
-      (map-keymap
-       (lambda (event def)
-         (unless (or (memq event '(menu-bar tool-bar tab-bar remap
-                                   mode-line header-line))
-                     (and (symbolp event)
-                          ;; evil keeps its keys for a mode under
-                          ;; <normal-state> etc.; those are read separately
-                          (string-match-p "mouse\\|wheel\\|drag\\|touch\\|-state\\'"
-                                          (symbol-name event))))
-           (let ((key (vconcat prefix (vector event))))
-             (when (eq (car-safe def) 'menu-item)
-               (setq def (nth 2 def)))
-             (cond ((keymapp def)
-                    (when (< (length prefix) 2)
-                      (walk def key)))
-                   ((and (symbolp def) (commandp def)
-                         (not (memq def pop/keys-skip)))
-                    (push (cons key def) out))))))
-       map))
-    out))
-
-(defun pop/live-bindings (maps shown)
-  "MAPS' bindings that are really what their key runs in this buffer.
-Keys in SHOWN (a hash table of descriptions) are skipped, then added."
-  (let (out)
-    (dolist (map maps)
-      (pcase-dolist (`(,key . ,cmd) (pop/keymap-bindings map))
-        (let ((desc (key-description key)))
-          (unless (or (gethash desc shown)
-                      (rassoc desc pop/key-aliases) ; RET is listed, not <return>
-                      (not (memq (key-binding key) (list cmd (command-remapping cmd)))))
-            (puthash desc t shown)
-            (push (cons desc cmd) out)))))
-    (sort out (lambda (a b)
-                (let ((la (length (car a))) (lb (length (car b))))
-                  (or (< la lb)
-                      (and (= la lb) (string< (car a) (car b)))))))))
-
-(defun pop/command-summary (cmd)
-  "CMD's first doc line, short; its name if it has none."
-  (let ((doc (car (split-string (or (ignore-errors (documentation cmd t)) "")
-                                "\n"))))
-    (if (string-empty-p doc)
-        (symbol-name cmd)
-      (truncate-string-to-width (string-remove-suffix "." doc) 48 nil nil "…"))))
-
-(defun pop/keys-sections (heading bindings)
-  "Sections of at most 20 BINDINGS, the first under HEADING."
-  (seq-map-indexed
-   (lambda (chunk i)
-     (cons (if (zerop i) heading "")
-           (mapcan (lambda (b) (list (car b) (pop/command-summary (cdr b))))
-                   chunk)))
-   (seq-split bindings 20)))
-
-(defun pop/collect-keys (type)
-  "Key reference sections for popup TYPE, from the current buffer's keymaps."
-  (let* ((shown (make-hash-table :test #'equal))
-         (local (current-local-map))
-         (state (bound-and-true-p evil-state))
-         (mode-maps (delq nil (list (and state local (fboundp 'evil-get-auxiliary-keymap)
-                                         (evil-get-auxiliary-keymap local state))
-                                    local))))
-    (append (pop/keys-sections "This popup"
-                               (pop/live-bindings (list (pop/prop type :map)) shown))
-            (pop/keys-sections (capitalize (string-remove-suffix
-                                            "-mode" (symbol-name major-mode)))
-                               (pop/live-bindings mode-maps shown)))))
-
-(defun pop/keys-block (section key-width)
-  "Lines for SECTION (HEADING KEY TEXT ...), keys padded to KEY-WIDTH."
-  (cons (propertize (car section) 'face 'pop/keys-heading)
-        (mapcar (lambda (pair)
-                  (concat (propertize (string-pad (car pair) key-width)
-                                      'face 'pop/keys-key)
-                          "  " (cadr pair)))
-                (seq-split (cdr section) 2))))
-
-(defun pop/insert-keys (title sections width)
-  "Insert TITLE and SECTIONS as a grid of blocks fitting WIDTH columns."
-  (let* ((key-width (apply #'max (mapcar (lambda (s)
-                                           (apply #'max (mapcar #'length
-                                                                (seq-map #'car (seq-split (cdr s) 2)))))
-                                         sections)))
-         (blocks (mapcar (lambda (s) (pop/keys-block s key-width)) sections))
-         (col-width (+ 4 (apply #'max (mapcar #'string-width (apply #'append blocks)))))
-         (cols (max 1 (/ (- width 2) col-width))))
-    (insert "\n " (propertize title 'face 'pop/keys-title) "\n\n")
-    (dolist (row (seq-split blocks cols))
-      (dotimes (i (apply #'max (mapcar #'length row)))
-        (insert "  ")
-        (dolist (block row)
-          (insert (string-pad (or (nth i block) "") col-width)))
-        (delete-horizontal-space)
-        (insert "\n"))
-      (insert "\n"))))
+(use-package embark :commands embark-bindings)
 
 (defun pop/show-keys ()
-  "Show the current popup's full key reference."
+  "List the keys that work in this popup, leaving out the global ones."
   (interactive)
-  (let ((type (pop/current-type)))
-    (if-let* ((help (pop/collect-keys type)))
-        (let ((buf (get-buffer-create "*popup keys*")))
-          (setq pop/keys-return (pop/buffer))
-          (with-current-buffer buf (pop/keys-mode))
-          (pop/display buf nil)
-          (pop/focus)
-          (with-current-buffer buf
-            (let ((inhibit-read-only t))
-              (erase-buffer)
-              (pop/insert-keys (format "%s keys" (capitalize (symbol-name type)))
-                               help
-                               (window-body-width (frame-root-window pop/frame))))
-            (goto-char (point-min))))
-      (message "No keys bound in this popup"))))
-
-(defun pop/keys-back ()
-  "Leave the key reference for the popup it was opened from."
-  (interactive)
-  (if (buffer-live-p pop/keys-return)
-      (progn (pop/display pop/keys-return nil)
-             (pop/focus))
-    (pop/hide)))
-
-(pop/define keys
-  :match (derived-mode-p 'pop/keys-mode)
-  :keys  ("?"        pop/keys-back
-          "<escape>" pop/keys-back
-          "q"        pop/keys-back
-          "M-s M-d"  consult-line)      ; search the sheet, as in any document
-  :hints ("?/esc" "back"  "j/k" "move"  "M-s M-d" "search"))
+  (embark-bindings t))
 
 (provide 'popup)

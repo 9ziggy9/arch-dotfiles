@@ -13,19 +13,8 @@
   (org-tags-column 0)
   (org-catch-invisible-edits 'show-and-error) ; no editing folded text unseen
   (org-special-ctrl-a/e t)               ; C-a/C-e skip stars and tags
-  (org-insert-heading-respect-content t) ; new headings go after the subtree
-  :config
-  ;; Bigger headings, and the ellipsis without the underline it gets by
-  ;; default; redone after each theme, since themes set them
-  (defun my/org-faces (&rest _)
-    (set-face-attribute 'org-ellipsis nil :underline nil)
-    (pcase-dolist (`(,face . ,height) '((org-document-title . 1.5)
-                                        (org-level-1 . 1.3)
-                                        (org-level-2 . 1.15)
-                                        (org-level-3 . 1.05)))
-      (set-face-attribute face nil :height height :weight 'bold)))
-  (my/org-faces)
-  (add-hook 'enable-theme-functions #'my/org-faces))
+  (org-insert-heading-respect-content t)) ; new headings go after the subtree
+;; (bigger headings: org-level-* faces, in ui.el)
 
 ;; Symbols for heading stars (▶ folded, ▼ open), list bullets,
 ;; checkboxes, tags, tables, blocks, timestamps

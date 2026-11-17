@@ -1,5 +1,5 @@
-/* Centered popup. Colors are in colors.rasi, written from the kitty theme
-   by kitty-colors.sh whenever theme-select ($mod+Shift+t) runs. */
+/* Centered popup. Colors are in colors.rasi, the color scheme's, written by
+   tinty whenever theme-select ($mod+Shift+t) runs. */
 @import "colors.rasi"
 
 * {

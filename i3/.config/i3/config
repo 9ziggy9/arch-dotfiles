@@ -76,12 +76,15 @@ bindsym $mod+Return exec kitty
 # kill focused window
 bindsym $mod+x kill
 
-# program launcher: rofi, centered, in the kitty theme's colors
+# program launcher: rofi, centered, in the color scheme's colors
 # (Ctrl+Tab switches between apps and any command on $PATH)
 bindsym $mod+p exec --no-startup-id rofi -show drun
 
-# theme picker (rofi): switches emacs, kitty, the status bar and rofi together
+# color scheme picker (rofi): recolors everything together, through tinty
 bindsym $mod+Shift+t exec --no-startup-id theme-select
+
+# screenshot: pick an area with flameshot; Enter or Ctrl+S saves it to ~/scrots
+bindsym Print exec --no-startup-id mkdir -p "$HOME/scrots" && flameshot gui --path "$HOME/scrots"
 
 # key bindings: lists these bindings in rofi (~/.local/bin/i3-keys)
 bindsym $mod+slash exec --no-startup-id i3-keys
@@ -189,32 +192,11 @@ bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcu
 bindsym $mod+bracketright resize grow width 50 px
 bindsym $mod+bracketleft  resize shrink width 50 px
 
-# Gruvbox dark color palette
-set $bg       #282828
-set $bg1      #3c3836
-set $bg2      #504945
-set $bg4      #7c6f64
-set $fg       #ebdbb2
-set $fg4      #a89984
-set $red      #cc241d
-set $green    #98971a
-set $yellow   #d79921
-set $blue     #458588
-set $purple   #b16286
-set $aqua     #689d6a
-set $orange   #d65d0e
+# Window colors and the bar, in the color scheme's colors: written by tinty
+# (theme-select) from ~/.config/tinted-theming/templates/i3, so this file
+# never changes on a scheme switch. Edit the bar there, not in theme.conf.
+include ~/.config/i3/theme.conf
 
-# Window colors:          border  background  text    indicator  child_border
-client.focused #689d6a #689d6a #282828 #282828
-client.focused_inactive #1d2021 #1d2021 #928374 #282828
-client.unfocused #32302f #32302f #928374 #282828
-client.urgent #cc241d #cc241d #ebdbb2 #282828
-
-# The bar: edit it in bar.conf.in. bar-theme.py (run by theme-select) writes
-# bar.conf from that template with the theme's colors, so this file never
-# changes on a theme switch. (Variables set in an included file can't be used
-# here, so the whole bar block lives in the included file.)
-include ~/.config/i3/bar.conf
-
-# On a fresh install there is no bar.conf yet: make it, then reload to show the bar
-exec --no-startup-id [ -f ~/.config/i3/bar.conf ] || { python3 -I ~/.config/bumblebee-status/bar-theme.py && i3-msg -q restart; }
+# On a fresh install there is no theme.conf yet: apply the default scheme
+# (which restarts i3 to show the bar)
+exec --no-startup-id [ -f ~/.config/i3/theme.conf ] || theme-select base16-solarized-dark

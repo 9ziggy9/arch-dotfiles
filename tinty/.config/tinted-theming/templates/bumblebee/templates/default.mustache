@@ -1,0 +1,30 @@
+{
+  "_comment": "bumblebee-status theme from the scheme {{scheme-name}}, written by tinty (edits are overwritten). Segments alternate between the background and a lighter shade, like solarized-powerline; statusline.py takes its colors from the first.",
+  "icons": ["awesome-fonts"],
+  "defaults": {
+    "separator-block-width": 0,
+    "warning": {"fg": "#{{base00-hex}}", "bg": "#{{base0A-hex}}"},
+    "critical": {"fg": "#{{base00-hex}}", "bg": "#{{base08-hex}}"}
+  },
+  "cycle": [
+    {"fg": "#{{base05-hex}}", "bg": "#{{base00-hex}}"},
+    {"fg": "#{{base06-hex}}", "bg": "#{{base02-hex}}"}
+  ],
+  "dnf": {"good": {"fg": "#{{base00-hex}}", "bg": "#{{base0B-hex}}"}},
+  "pacman": {"good": {"fg": "#{{base00-hex}}", "bg": "#{{base0B-hex}}"}},
+  "apt": {"good": {"fg": "#{{base00-hex}}", "bg": "#{{base0B-hex}}"}},
+  "battery": {
+    "charged": {"fg": "#{{base00-hex}}", "bg": "#{{base0B-hex}}"},
+    "AC": {"fg": "#{{base00-hex}}", "bg": "#{{base0B-hex}}"}
+  },
+  "git": {
+    "modified": {"bg": "#{{base0C-hex}}"},
+    "deleted": {"bg": "#{{base0E-hex}}"},
+    "new": {"bg": "#{{base0B-hex}}"}
+  },
+  "pomodoro": {
+    "paused": {"fg": "#{{base00-hex}}", "bg": "#{{base0A-hex}}"},
+    "work": {"fg": "#{{base06-hex}}", "bg": "#{{base02-hex}}"},
+    "break": {"fg": "#{{base00-hex}}", "bg": "#{{base0B-hex}}"}
+  }
+}

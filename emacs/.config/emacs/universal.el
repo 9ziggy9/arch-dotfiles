@@ -1,16 +1,12 @@
 ;;; universal.el --- keys that work everywhere -*- lexical-binding: t -*-
 
 (require 'popup (locate-user-emacs-file "popup"))
+(require 'ui (locate-user-emacs-file "ui"))  ; my/mix, my/scheme-color
 
 (defun univ/spawn-window ()
   "Split to the right, showing the current buffer in the new window too."
   (interactive)
   (select-window (split-window-right)))
-
-(declare-function pdf-view-enlarge "pdf-view")
-(declare-function pdf-view-shrink "pdf-view")
-(declare-function pdf-view-fit-width-to-window "pdf-view")
-(defvar pdf-view-resize-factor)
 
 ;; Zoom: text size, or in a PDF, the page
 (defun univ/zoom-in ()
@@ -54,19 +50,16 @@ through to its usual binding."
                                    (derived-mode-p 'treemacs-mode))
                            cmd))))
 
-(declare-function treemacs-current-visibility "treemacs")
-(declare-function treemacs-get-local-window "treemacs")
-(declare-function treemacs-add-and-display-current-project-exclusively "treemacs")
-
 (defun univ/toggle-treemacs ()
   "Show this file's project in treemacs, or hide treemacs if it's showing.
 From a popup, the popup closes and this acts on the main frame."
   (interactive)
   (require 'treemacs)
-  (when (eq (selected-frame) pop/frame)
-    (pop/hide))
+  (pop/leave)
   (with-current-buffer (window-buffer (selected-window))
     (cond ((eq (treemacs-current-visibility) 'visible)
+           ;; peeking ends on leaving treemacs, which this skips
+           (when (bound-and-true-p treemacs-peek-mode) (treemacs-peek-mode -1))
            (delete-window (treemacs-get-local-window)))
           ((not buffer-file-name)
            (user-error "Treemacs opens from a buffer visiting a file"))
@@ -113,25 +106,12 @@ From a popup, the popup closes and this acts on the main frame."
            (let ((ignore-window-parameters t)) ; side windows too
              (delete-other-windows))))))
 
-(defun univ/grow-window ()
-  "Make the current window wider."
-  (interactive)
-  (enlarge-window-horizontally 4))
-
-(defun univ/shrink-window ()
-  "Make the current window narrower."
-  (interactive)
-  (shrink-window-horizontally 4))
-
-(defun univ/grow-window-tall ()
-  "Make the current window taller."
-  (interactive)
-  (enlarge-window 2))
-
-(defun univ/shrink-window-tall ()
-  "Make the current window shorter."
-  (interactive)
-  (shrink-window 2))
+(defun univ/resize-window (columns lines)
+  "A command growing the window by COLUMNS and LINES (negative shrinks)."
+  (lambda ()
+    (interactive)
+    (unless (zerop columns) (enlarge-window columns t))
+    (unless (zerop lines) (enlarge-window lines))))
 
 ;; Tabs, like kitty and qutebrowser: M-1..M-9 go to tab N, or open a new
 ;; tab at the end with dired in the current buffer's directory if there is
@@ -144,31 +124,24 @@ From a popup, the popup closes and this acts on the main frame."
       tab-bar-new-button-show nil)
 
 ;; The tab bar looks like kitty's slanted powerline tabs, slim: every tab on
-;; a muted shade of the theme, the selected one told apart by its amber bold
-;; text; tabs are divided by a thin ╱ and the last ends in a slant ().
+;; a muted shade of the theme, the selected one told apart by its bold text in
+;; the scheme's accent (its yellow); tabs are divided by a thin ╱ and the last ends in a slant ().
 ;; Recolored with every theme.
-(require 'color)
-
-(defun univ/mix (a b frac)
-  "Color A with FRAC of color B mixed in."
-  (apply #'color-rgb-to-hex
-         (append (cl-mapcar (lambda (x y) (+ x (* frac (- y x))))
-                            (color-name-to-rgb a) (color-name-to-rgb b))
-                 '(2))))
 
 (defun univ/tab-name (tab i)
   "TAB, the I-th tab, drawn like a kitty powerline tab."
   (let* ((bar (face-background 'default nil t))
          (fg (face-foreground 'default nil t))
-         (bg (univ/mix bar fg 0.12))
+         (bg (my/mix bar fg 0.12))
          (current (eq (car tab) 'current-tab))
          (last (= i (length (funcall tab-bar-tabs-function))))  ; I counts from 1
          (name (truncate-string-to-width (alist-get 'name tab) 30 nil nil "…")))
     (concat
      (propertize (format " %d %s " i name)
                  'face (if current
-                           `(:background ,bg :foreground "#c9a66b" :weight bold)
-                         `(:background ,bg :foreground ,(univ/mix bar fg 0.6))))
+                           `(:background ,bg :foreground ,(or (my/scheme-color :base0A) fg)
+                             :weight bold)
+                         `(:background ,bg :foreground ,(my/mix bar fg 0.6))))
      (if last
          (propertize "" 'face `(:background ,bar :foreground ,bg))
        (propertize "╱" 'face `(:background ,bg :foreground ,bar))))))
@@ -187,14 +160,9 @@ From a popup, the popup closes and this acts on the main frame."
 (univ/tab-bar-face)
 (add-hook 'enable-theme-functions #'univ/tab-bar-face)
 
-(defun univ/leave-popup ()
-  "If a popup is selected, hide it, so tab keys act on the main frame."
-  (when (and (boundp 'pop/frame) (eq (selected-frame) pop/frame))
-    (pop/hide)))
-
 (defun univ/tab-select-or-new (n)
   "Go to tab N, or open a new tab with dired in the current directory."
-  (univ/leave-popup)
+  (pop/leave)
   (if (<= n (length (tab-bar-tabs)))
       (tab-bar-select-tab n)
     (let ((dir (with-current-buffer (window-buffer (selected-window))
@@ -205,7 +173,7 @@ From a popup, the popup closes and this acts on the main frame."
 (defun univ/tab-close ()
   "Close the current tab."
   (interactive)
-  (univ/leave-popup)
+  (pop/leave)
   (if (cdr (tab-bar-tabs))
       (tab-bar-close-tab)
     (message "Only one tab")))
@@ -230,10 +198,10 @@ From a popup, the popup closes and this acts on the main frame."
   "C-S-l" #'windmove-swap-states-right
   "C-]"   #'window-layout-transpose  ; side-by-side <-> stacked
   "C-f"   (univ/outside-minibuffer #'univ/toggle-fullscreen-window)
-  "C-<right>" (univ/outside-minibuffer #'univ/grow-window)
-  "C-<left>"  (univ/outside-minibuffer #'univ/shrink-window)
-  "C-<up>"    (univ/outside-minibuffer #'univ/grow-window-tall)
-  "C-<down>"  (univ/outside-minibuffer #'univ/shrink-window-tall)
+  "C-<right>" (univ/outside-minibuffer (univ/resize-window 4 0))
+  "C-<left>"  (univ/outside-minibuffer (univ/resize-window -4 0))
+  "C-<up>"    (univ/outside-minibuffer (univ/resize-window 0 2))
+  "C-<down>"  (univ/outside-minibuffer (univ/resize-window 0 -2))
   "C-x"   #'pop/close-or-delete-window
   ;; In treemacs, C-<return> opens the file at point in a split instead
   "C-<return>" `(menu-item "" univ/spawn-window

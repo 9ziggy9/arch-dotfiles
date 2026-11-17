@@ -49,7 +49,7 @@
 ;; Jump hints, like qutebrowser's: M-SPC (universal.el) labels every word in
 ;; every window; type a label to jump there, into that window.  Works in
 ;; visual mode too (selects up to the jump, in this window only: evil's
-;; rule).  Labels are amber like the tab bar.
+;; rule).  Labels are in the scheme's accent, like the tab bar (faces in ui.el).
 ;;
 ;; Loaded at startup, not on first use: evil wraps avy's commands and only
 ;; honors "all windows" once avy is loaded, so a lazy load made the first
@@ -61,13 +61,7 @@
   ;; in every window, so labels stay short (only home row ran to 3-5 letters)
   (setq avy-keys (string-to-list "asdfghjklqwertyuiopzxcvbnm")
         avy-background t                 ; dim the text so the labels stand out
-        avy-style 'at-full)              ; labels drawn over the word's start
-  (defun my/avy-faces (&rest _)
-    (dolist (face '(avy-lead-face avy-lead-face-0 avy-lead-face-1 avy-lead-face-2))
-      (set-face-attribute face nil :background "#c9a66b" :foreground "#1c1c1c"
-                          :weight 'bold)))
-  (my/avy-faces)
-  (add-hook 'enable-theme-functions #'my/avy-faces))
+        avy-style 'at-full))             ; labels drawn over the word's start
 
 (use-package evil-multiedit            ; L: edit every match of the word at once
   :after evil
@@ -85,8 +79,6 @@
             (lambda ()
               (unless (evil-mc-executing-command-p)
                 (evil-mc-undo-all-cursors)))))
-
-(declare-function evil-mc-make-cursor-in-visual-selection "evil-mc-cursor-make")
 
 (evil-define-command my/cursors-at-line-starts ()
   "Put a cursor at the start of every selected line, in normal state."
@@ -138,9 +130,6 @@
 ;; removes folds for good.  Folds last until the buffer is closed.
 (use-package vimish-fold
   :commands (vimish-fold vimish-fold-toggle vimish-fold-delete))
-
-(declare-function vimish-fold--folds-in "vimish-fold")
-(declare-function vimish-fold--delete "vimish-fold")
 
 (defun my/fold-selection ()
   "Fold the lines of the visual selection."

@@ -2,14 +2,15 @@
 # a real directory and generated or runtime files are written there, not here.
 # These rules are a safety net in case one ever lands in the repo.
 
-# Written by theme-select and the scripts it runs
+# Written by tinty (theme-select): every scheme rendered from the templates,
+# and the chosen one copied into each program's config
+tinty/.config/tinted-theming/templates/*/themes/
 kitty/.config/kitty/current-theme.conf
 rofi/.config/rofi/colors.rasi
-bumblebee/.config/bumblebee-status/colors.json
+qutebrowser/.config/qutebrowser/scheme
 bumblebee/.config/bumblebee-status/themes/
-i3/.config/i3/bar.conf
-emacs/.config/emacs/theme
-emacs/.config/emacs/theme-colors
+i3/.config/i3/theme.conf
+emacs/.config/emacs/themes/
 
 # Emacs packages, caches and session state
 emacs/.config/emacs/elpa/
