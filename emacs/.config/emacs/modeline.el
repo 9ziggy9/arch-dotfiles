@@ -91,20 +91,25 @@ Its SLOTS replace `ml/default-slots', e.g.
   (let ((bg (face-background 'mode-line nil 'default))
         (fg (face-foreground 'mode-line nil 'default)))
     (when (and bg fg (color-defined-p bg) (color-defined-p fg))
-      (set-face-attribute 'ml/seg-a nil :background bg :foreground fg)
-      (set-face-attribute 'ml/seg-b nil
-                          :background (my/mix bg fg 0.3)
-                          :foreground (my/mix fg (if (color-dark-p (color-name-to-rgb bg))
-                                                     "#ffffff" "#000000")
-                                              0.5)))))
+      (set-face-attribute 'ml/seg-a nil :background bg :foreground (my/readable fg bg))
+      (let ((shade (my/mix bg fg 0.3)))
+        (set-face-attribute 'ml/seg-b nil
+                            :background shade
+                            ;; always readable, whatever the shade (ui.el)
+                            :foreground (my/readable
+                                         (my/mix fg (if (color-dark-p (color-name-to-rgb bg))
+                                                        "#ffffff" "#000000")
+                                                 0.5)
+                                         shade))))))
 
 (ml/update-segment-faces)
 (add-hook 'enable-theme-functions #'ml/update-segment-faces)
 
 ;;;; What the bar shows
 
-;; The name stands out in bold white, on a shade slightly lighter than the
-;; bar; redone after each theme
+;; The name stands out in bold white (black where white wouldn't read, as on
+;; a light scheme), on a shade slightly lighter than the bar; redone after
+;; each theme
 (defface ml/name '((t :weight bold :foreground "#ffffff"))
   "The buffer-name segment.")
 
@@ -112,10 +117,11 @@ Its SLOTS replace `ml/default-slots', e.g.
   "Shade the name's segment from the bar's colors."
   (let ((bg (face-background 'mode-line nil 'default))
         (fg (face-foreground 'mode-line nil 'default)))
-    (set-face-attribute 'ml/name nil
-                        :background (if (and (color-defined-p bg) (color-defined-p fg))
-                                        (my/mix bg fg 0.12)
-                                      'unspecified))))
+    (if (and (color-defined-p bg) (color-defined-p fg))
+        (let ((shade (my/mix bg fg 0.12)))
+          (set-face-attribute 'ml/name nil :background shade
+                              :foreground (my/readable "#ffffff" shade)))
+      (set-face-attribute 'ml/name nil :background 'unspecified))))
 
 (ml/update-name-face)
 (add-hook 'enable-theme-functions #'ml/update-name-face)

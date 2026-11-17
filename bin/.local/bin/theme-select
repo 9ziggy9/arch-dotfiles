@@ -6,12 +6,12 @@
 #   theme-select           pick with rofi
 #   theme-select SCHEME    switch straight to SCHEME, e.g. base16-nord
 #
-# What each program gets is a template in ~/.config/tinted-theming/templates;
-# how it's put in place and reloaded is in ~/.config/tinted-theming/tinty/
-# config.toml.
+# What each program gets is a template in ~/.config/tinted-theming/templates,
+# filled in, with any unreadable colors adjusted, by ~/.config/tinted-theming/
+# apply-scheme (tinty runs it; see its tinty/config.toml).
 
 export PATH="$HOME/.cargo/bin:$PATH"   # tinty; X sessions don't read .zshrc
-templates="$HOME/.config/tinted-theming/templates"
+scheme_template="$HOME/.config/tinted-theming/scheme"
 cache="${XDG_CACHE_HOME:-$HOME/.cache}/theme-select"
 mkdir -p "$cache"
 
@@ -24,10 +24,10 @@ if [ ! -d "$(tinty config --data-dir-path)/scheme-repos/schemes" ]; then
     tinty sync -q || fail "tinty sync failed"
 fi
 
-# Templates are rendered for every scheme ahead of time (a few seconds);
-# render again whenever one has changed since
+# The scheme JSON apply-scheme reads is rendered for every scheme ahead of
+# time (about a second), and again whenever its template changes
 built="$cache/built"
-if [ ! -e "$built" ] || [ -n "$(find -L "$templates" -path '*/themes' -prune -o -type f -newer "$built" -print -quit)" ]; then
+if [ ! -e "$built" ] || [ -n "$(find -L "$scheme_template" -path '*/themes' -prune -o -type f -newer "$built" -print -quit)" ]; then
     tinty build -q || fail "tinty build failed"
     touch "$built"
 fi

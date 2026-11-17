@@ -1,0 +1,35 @@
+{
+  "_comment": "bumblebee-status theme from the scheme {{scheme-name}}, written by apply-scheme for tinty (edits are overwritten). Segments alternate between the background and a lighter shade, like solarized-powerline; statusline.py takes its colors from the first. A warning (CPU, memory, disk over its limit) colors only the text, yellow, a critical one red; the segment keeps its own background. So does a full or plugged-in battery, in green.",
+  "icons": ["awesome-fonts"],
+  "defaults": {
+    "separator-block-width": 0,
+    "warning": {"fg": "#{{text-base0A-hex}}"},
+    "critical": {"fg": "#{{text-base08-hex}}"}
+  },
+  "statusline": {
+    "_comment": "for statusline.py, not bumblebee: the ends of the battery and disk gradients",
+    "good": "#{{base07-hex}}",
+    "bad": "#{{text-base08-hex}}"
+  },
+  "cycle": [
+    {"fg": "#{{base05-hex}}", "bg": "#{{base00-hex}}"},
+    {"fg": "#{{base06-hex}}", "bg": "#{{base02-hex}}"}
+  ],
+  "dnf": {"good": {"fg": "#{{on-base0B-hex}}", "bg": "#{{base0B-hex}}"}},
+  "pacman": {"good": {"fg": "#{{on-base0B-hex}}", "bg": "#{{base0B-hex}}"}},
+  "apt": {"good": {"fg": "#{{on-base0B-hex}}", "bg": "#{{base0B-hex}}"}},
+  "battery": {
+    "charged": {"fg": "#{{text-base0B-hex}}"},
+    "AC": {"fg": "#{{text-base0B-hex}}"}
+  },
+  "git": {
+    "modified": {"fg": "#{{on-base0C-hex}}", "bg": "#{{base0C-hex}}"},
+    "deleted": {"fg": "#{{on-base0E-hex}}", "bg": "#{{base0E-hex}}"},
+    "new": {"fg": "#{{on-base0B-hex}}", "bg": "#{{base0B-hex}}"}
+  },
+  "pomodoro": {
+    "paused": {"fg": "#{{on-base0A-hex}}", "bg": "#{{base0A-hex}}"},
+    "work": {"fg": "#{{base06-hex}}", "bg": "#{{base02-hex}}"},
+    "break": {"fg": "#{{on-base0B-hex}}", "bg": "#{{base0B-hex}}"}
+  }
+}

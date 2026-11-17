@@ -139,7 +139,8 @@ From a popup, the popup closes and this acts on the main frame."
     (concat
      (propertize (format " %d %s " i name)
                  'face (if current
-                           `(:background ,bg :foreground ,(or (my/scheme-color :base0A) fg)
+                           `(:background ,bg
+                             :foreground ,(my/readable (or (my/scheme-color :base0A) fg) bg)
                              :weight bold)
                          `(:background ,bg :foreground ,(my/mix bar fg 0.6))))
      (if last

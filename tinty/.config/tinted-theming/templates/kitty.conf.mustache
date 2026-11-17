@@ -1,9 +1,9 @@
-# kitty colors: {{scheme-name}} (written by tinty; edits are overwritten)
+# kitty colors: {{scheme-name}} (written by apply-scheme for tinty; edits are overwritten)
 
 background               #{{base00-hex}}
 foreground               #{{base05-hex}}
 cursor                   #{{base05-hex}}
-cursor_text_color        #{{base00-hex}}
+cursor_text_color        #{{on-base05-hex}}
 selection_background     #{{base02-hex}}
 selection_foreground     #{{base05-hex}}
 url_color                #{{base0D-hex}}
@@ -11,7 +11,7 @@ active_border_color      #{{base0A-hex}}
 inactive_border_color    #{{base02-hex}}
 tab_bar_background       #{{base00-hex}}
 active_tab_background    #{{base0A-hex}}
-active_tab_foreground    #{{base00-hex}}
+active_tab_foreground    #{{on-base0A-hex}}
 inactive_tab_background  #{{base01-hex}}
 inactive_tab_foreground  #{{base04-hex}}
 
@@ -42,3 +42,7 @@ color18  #{{base01-hex}}
 color19  #{{base02-hex}}
 color20  #{{base04-hex}}
 color21  #{{base06-hex}}
+
+# Red that reads as normal text on any background shade (base00..base02), for
+# errors in the zsh prompt
+color22  #{{text-base08-hex}}

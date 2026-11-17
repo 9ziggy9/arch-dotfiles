@@ -1,0 +1,69 @@
+;;; base16-tinty-theme.el --- {{scheme-name}}, from tinty -*- lexical-binding: t -*-
+
+;; Written by apply-scheme for tinty (theme-select, $mod+Shift+t), with the
+;; colors already adjusted for contrast; edits are overwritten.  Loaded by
+;; ui.el, and reloaded in every running Emacs by `my/tinty-reload'.
+;; early-init.el reads :base00 and :base05 from here for new frames' colors.
+
+(require 'base16-theme)
+
+(defvar base16-tinty-theme-colors nil
+  "The colors of the scheme tinty last applied.")
+
+(defvar base16-tinty-theme-text-on nil
+  "For each color of the scheme, the text that reads on it.")
+
+;; set, not just defined, so reloading the file picks up a new scheme
+(setq base16-tinty-theme-colors
+      '(:base00 "#{{base00-hex}}"
+        :base01 "#{{base01-hex}}"
+        :base02 "#{{base02-hex}}"
+        :base03 "#{{base03-hex}}"
+        :base04 "#{{base04-hex}}"
+        :base05 "#{{base05-hex}}"
+        :base06 "#{{base06-hex}}"
+        :base07 "#{{base07-hex}}"
+        :base08 "#{{base08-hex}}"
+        :base09 "#{{base09-hex}}"
+        :base0A "#{{base0A-hex}}"
+        :base0B "#{{base0B-hex}}"
+        :base0C "#{{base0C-hex}}"
+        :base0D "#{{base0D-hex}}"
+        :base0E "#{{base0E-hex}}"
+        :base0F "#{{base0F-hex}}"))
+
+(setq base16-tinty-theme-text-on
+      '(:base00 "#{{on-base00-hex}}" :base01 "#{{on-base01-hex}}"
+        :base02 "#{{on-base02-hex}}" :base03 "#{{on-base03-hex}}"
+        :base04 "#{{on-base04-hex}}" :base05 "#{{on-base05-hex}}"
+        :base06 "#{{on-base06-hex}}" :base07 "#{{on-base07-hex}}"
+        :base08 "#{{on-base08-hex}}" :base09 "#{{on-base09-hex}}"
+        :base0A "#{{on-base0A-hex}}" :base0B "#{{on-base0B-hex}}"
+        :base0C "#{{on-base0C-hex}}" :base0D "#{{on-base0D-hex}}"
+        :base0E "#{{on-base0E-hex}}" :base0F "#{{on-base0F-hex}}"))
+
+(deftheme base16-tinty "{{scheme-name}}, the scheme tinty last applied.")
+
+;; base16-theme makes gnus's "-empty" group faces inherit from the plain
+;; ones, while gnus itself has the plain ones inherit from the "-empty" ones:
+;; a cycle, which aborts loading the theme ("Face inheritance results in
+;; inheritance cycle") once gnus is loaded.  The faces are applied as they're
+;; defined, so they're fixed on the way in: their color, not the inheritance.
+(require 'cl-lib)
+(let ((set-faces (symbol-function 'base16-theme-set-faces)))
+  (cl-letf (((symbol-function 'base16-theme-set-faces)
+             (lambda (name colors faces)
+               (funcall set-faces name colors
+                        (mapcar (lambda (face)
+                                  (if (string-match-p "\\`gnus-group-.*-empty\\'"
+                                                      (symbol-name (car face)))
+                                      (let ((attrs (copy-sequence (cdr face))))
+                                        (cl-remf attrs :inherit)
+                                        (cons (car face) attrs))
+                                    face))
+                                faces)))))
+    (base16-theme-define 'base16-tinty base16-tinty-theme-colors)))
+
+(provide-theme 'base16-tinty)
+
+;;; base16-tinty-theme.el ends here

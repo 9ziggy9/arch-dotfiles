@@ -1,0 +1,5 @@
+# The scheme as JSON, for apply-scheme: rendered for every scheme into
+# themes/ by `tinty build` (theme-select runs it when this template changes).
+default:
+  filename: themes/{{ scheme-system }}-{{ scheme-slug }}.json
+  supported-systems: [base16, base24]

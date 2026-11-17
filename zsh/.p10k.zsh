@@ -391,7 +391,7 @@
     local      clean=''         # the segment's own text color (monochrome)
     local   modified=''         # the segment's own text color (monochrome)
     local  untracked=''         # the segment's own text color (monochrome)
-    local conflicted='%1F' # red foreground
+    local conflicted='%22F' # red that reads on the segment (kitty's color22)
 
     local res
 
@@ -1826,62 +1826,33 @@
   typeset -g POWERLEVEL9K_DISABLE_HOT_RELOAD=true
 
   # ---- Monochrome, like the Emacs mode line and the i3 bar ----
-  # Colors come from the scheme kitty has loaded (tinty, theme-select,
-  # $mod+Shift+t), mixed the same way as the bar: the directory on a mid
-  # shade in the scheme's brightest text, bold, everything else on a faint
-  # shade with the normal text color. Text is always lighter than what it
-  # sits on. The only color left is red for errors. New shells pick up a
-  # scheme change (or run `exec zsh`).
+  # Colors are kitty's numbered colors, which apply-scheme (tinty,
+  # theme-select, $mod+Shift+t) fills with the scheme after fixing its
+  # contrast, so every pairing here reads at 4.5:1 or better whatever the
+  # scheme. They change in open shells as soon as kitty reloads.
+  # The numbers (tinted-theming/templates/kitty.conf.mustache):
+  #    0  base01   everything else's background, like kitty's inactive tabs
+  #    7  base05   the normal text, on it
+  #   19  base02   the directory's background, the bar's second shade
+  #   21  base06   the directory, bold, on it (shortened parts: 7, base05)
+  #   22  red      errors, made readable on all of the above
   () {
-    local -A k
-    local line p
-    local -a w
-    if [[ -r ~/.config/kitty/current-theme.conf ]]; then
-      for line in "${(@f)$(<~/.config/kitty/current-theme.conf)}"; do
-        w=(${=line})
-        [[ $w[2] == \#[[:xdigit:]](#c6) ]] && k[$w[1]]=${(L)w[2]}
-      done
-    fi
-    local bg=${k[background]:-#282828} fg=${k[foreground]:-#ebdbb2} red=${k[color1]:-#cc241d}
-    # the scheme's lightest text: whichever of its top shades (base05..07)
-    # really is lightest (some schemes, like nord, make base07 a color)
-    local bright=$fg c h
-    local -i best=0 luma
-    for c in $fg ${k[color21]} ${k[color15]}; do
-      [[ $c == \#[[:xdigit:]](#c6) ]] || continue
-      h=${c#\#}
-      luma=$(( 2126 * 16#${h[1,2]} + 7152 * 16#${h[3,4]} + 722 * 16#${h[5,6]} ))
-      (( luma > best )) && { best=luma; bright=$c; }
-    done
-    # REPLY = $1 with $3% of $2 mixed in
-    _mono_mix() {
-      local a=${1#\#} b=${2#\#} res='#' i x y
-      for i in 1 3 5; do
-        x=$(( 16#${a[i,i+1]} )); y=$(( 16#${b[i,i+1]} ))
-        res+=${(l:2::0:)${(L)$(( [##16] x + ($3 * (y - x)) / 100 ))}}
-      done
-      REPLY=$res
-    }
-    _mono_mix $bg $fg 30; local mid=$REPLY      # the bar's second shade
-    _mono_mix $bg $fg 12; local faint=$REPLY    # like kitty's inactive tabs
-    unfunction _mono_mix
-    local dim=$fg                               # shortened parts of the path: the
-                                                # normal text, a step below $bright
-
+    local p
+    local seg_bg=0 seg_fg=7 dir_bg=19 dir_fg=21 dir_dim=7 red=22
     for p in ${(k)parameters[(I)POWERLEVEL9K_*_BACKGROUND]}; do
-      [[ -n ${(P)p} ]] && typeset -g $p=$faint
+      [[ -n ${(P)p} ]] && typeset -g $p=$seg_bg
     done
     for p in ${(k)parameters[(I)POWERLEVEL9K_*_FOREGROUND]}; do
-      [[ -n ${(P)p} ]] && typeset -g $p=$fg
+      [[ -n ${(P)p} ]] && typeset -g $p=$seg_fg
     done
     # git's text isn't set above (this config never sets it, so p10k would
-    # draw it in the scheme's near-background black): the normal text too
-    typeset -g POWERLEVEL9K_VCS_{CLEAN,MODIFIED,UNTRACKED,CONFLICTED,LOADING}_FOREGROUND=$fg
-    for p in ${(k)parameters[(I)POWERLEVEL9K_DIR_*BACKGROUND]}; do typeset -g $p=$mid; done
-    for p in ${(k)parameters[(I)POWERLEVEL9K_DIR_*FOREGROUND]}; do typeset -g $p=$bright; done
-    for p in ${(k)parameters[(I)POWERLEVEL9K_DIR_*SHORTENED_FOREGROUND]}; do typeset -g $p=$dim; done
-    typeset -g POWERLEVEL9K_DIR_BACKGROUND=$mid POWERLEVEL9K_DIR_FOREGROUND=$bright
-    typeset -g POWERLEVEL9K_DIR_SHORTENED_FOREGROUND=$dim POWERLEVEL9K_DIR_ANCHOR_BOLD=true
+    # draw it in its own default): the normal text too
+    typeset -g POWERLEVEL9K_VCS_{CLEAN,MODIFIED,UNTRACKED,CONFLICTED,LOADING}_FOREGROUND=$seg_fg
+    for p in ${(k)parameters[(I)POWERLEVEL9K_DIR_*BACKGROUND]}; do typeset -g $p=$dir_bg; done
+    for p in ${(k)parameters[(I)POWERLEVEL9K_DIR_*FOREGROUND]}; do typeset -g $p=$dir_fg; done
+    for p in ${(k)parameters[(I)POWERLEVEL9K_DIR_*SHORTENED_FOREGROUND]}; do typeset -g $p=$dir_dim; done
+    typeset -g POWERLEVEL9K_DIR_BACKGROUND=$dir_bg POWERLEVEL9K_DIR_FOREGROUND=$dir_fg
+    typeset -g POWERLEVEL9K_DIR_SHORTENED_FOREGROUND=$dir_dim POWERLEVEL9K_DIR_ANCHOR_BOLD=true
     for p in ${(k)parameters[(I)POWERLEVEL9K_STATUS_ERROR*_FOREGROUND]}; do typeset -g $p=$red; done
     typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=$red
   }

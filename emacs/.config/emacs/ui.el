@@ -20,12 +20,31 @@
 ;; package, and reloads it in a running daemon (`my/tinty-reload').
 
 (require 'color)
+(require 'cl-lib)
 
 (defun my/mix (a b frac)
   "Color A with FRAC of color B mixed in."
   (apply #'color-rgb-to-hex
          (append (color-blend (color-name-to-rgb b) (color-name-to-rgb a) frac)
                  '(2))))
+
+(defun my/contrast (a b)
+  "The WCAG contrast ratio of colors A and B (1 to 21)."
+  (let ((l (lambda (c)
+             (apply #'+ (cl-mapcar
+                         (lambda (w x) (* w (if (<= x 0.04045) (/ x 12.92)
+                                              (expt (/ (+ x 0.055) 1.055) 2.4))))
+                         '(0.2126 0.7152 0.0722) (color-name-to-rgb c))))))
+    (let ((la (funcall l a)) (lb (funcall l b)))
+      (/ (+ (max la lb) 0.05) (+ (min la lb) 0.05)))))
+
+(defun my/readable (fg bg)
+  "FG if it reads on BG (4.5:1, like apply-scheme's rule), else black or
+white, whichever reads better."
+  (if (or (not (color-defined-p fg)) (not (color-defined-p bg))
+          (>= (my/contrast fg bg) 4.5))
+      fg
+    (if (> (my/contrast "#000000" bg) (my/contrast "#ffffff" bg)) "#000000" "#ffffff")))
 
 (defun my/scheme-color (key &optional theme)
   "Color KEY (:base00 .. :base0F) of THEME's scheme (default: the current
@@ -117,7 +136,8 @@ file-notify event in its directory)."
     (when (frame-live-p pop/frame)
       (set-face-background 'child-frame-border orange pop/frame)))
   (let ((accent (my/scheme-color :base0A theme))
-        (text (my/scheme-color :base00 theme)))
+        (text (or (plist-get (bound-and-true-p base16-tinty-theme-text-on) :base0A)
+                  (my/scheme-color :base00 theme))))
     (when (and accent text)
       (dolist (face '(avy-lead-face avy-lead-face-0 avy-lead-face-1 avy-lead-face-2))
         (face-spec-set face `((t :background ,accent :foreground ,text :weight bold))))))

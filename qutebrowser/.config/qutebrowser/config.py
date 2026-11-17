@@ -18,7 +18,7 @@ def scheme_colors(path=os.path.expanduser("~/.config/qutebrowser/scheme")):
     try:
         with open(path) as f:
             for line in f:
-                m = re.match(r"\s*(base0[0-9A-F])\s+(#[0-9a-fA-F]{6})\s*$", line)
+                m = re.match(r"\s*((?:on-)?base0[0-9A-F])\s+(#[0-9a-fA-F]{6})\s*$", line)
                 if m:
                     colors[m.group(1)] = m.group(2)
     except OSError:
@@ -31,13 +31,16 @@ fg       = s.get("base05", "#ebdbb2")
 alt_bg   = s.get("base01", bg)     # the shade above the background
 dim      = s.get("base04", fg)     # muted text
 sel_bg   = s.get("base0A", fg)     # the accent: selected tab, hints, selections
-sel_fg   = bg
+sel_fg   = s.get("on-base0A", bg)  # "on-": text that reads on that color
 accent   = s.get("base0D", fg)
 red      = s.get("base08", "#cc241d")
 green    = s.get("base0B", "#98971a")
 yellow   = s.get("base0A", "#d79921")
 blue     = s.get("base0D", "#458588")
 border   = s.get("base02", alt_bg)
+on_red   = s.get("on-base08", bg)
+on_green = s.get("on-base0B", bg)
+on_blue  = s.get("on-base0D", bg)
 
 # Tabs: every tab on the muted shade; the selected one is told apart by its
 # accent-colored bold title (fonts.tabs.selected, below)
@@ -125,9 +128,9 @@ c.colors.downloads.bar.bg = bg
 c.colors.downloads.start.bg = blue
 c.colors.downloads.stop.bg = green
 c.colors.downloads.error.bg = red
-c.colors.downloads.start.fg = bg
-c.colors.downloads.stop.fg = bg
-c.colors.downloads.error.fg = bg
+c.colors.downloads.start.fg = on_blue
+c.colors.downloads.stop.fg = on_green
+c.colors.downloads.error.fg = on_red
 
 # Pages: the theme's background before a page paints (no white flash)
 c.colors.webpage.bg = bg

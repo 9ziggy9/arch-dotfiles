@@ -1,0 +1,301 @@
+#!/usr/bin/env python3
+"""Put a color scheme into every program, readable whatever the scheme.
+
+Run by tinty when a scheme is applied (tinty/config.toml), with the scheme as
+JSON (rendered by tinty from scheme/templates/default.mustache):
+
+    apply-scheme SCHEME.json         repair it, fill in the templates, reload
+    apply-scheme --check FILE...     only report what each scheme needs repaired
+
+Schemes follow the base16 layout: base00..base07 are shades from the
+background to the text, base08..base0F accents. Some keep to it too loosely
+to read (two shades the same, a "background" shade nearly as light as the
+text), so before any program sees the colors they are checked with the WCAG
+contrast ratio, and the ones that fail are nudged in lightness only (hue and
+saturation stay). Schemes that already pass are left exactly as they are.
+
+  - the background shades base01 and base02 step visibly apart from base00
+    and from each other, and the text (base05, base06) reads on all three:
+    a shade the text doesn't read on is first brought back toward the
+    background, and only if that isn't enough is the text made lighter
+  - dim text (base04 on base01) and the brightest text (base07 on base02)
+    read, if less strongly, and comments (base03) at least faintly
+  - every accent reads as text on the background
+
+Then for every color there's "text on it" (on-base00 .. on-base0F): the
+scheme's background or its lightest text, whichever reads on that color, or
+black or white when neither does. Templates use those wherever text sits on
+a colored background, so that pairing is always readable too.
+
+And for every accent there's "as text" (text-base08 .. text-base0F): the
+accent, made lighter or darker if needed until it reads as normal text
+(4.5:1) on every background shade, base00 to base02. Templates use those
+for colored text that can land on any of them, like the bar's warnings.
+
+Templates are templates/<program>.mustache, with {{base0A-hex}} (no #),
+{{on-base0A-hex}}, {{text-base0A-hex}} and {{scheme-name}}; APPS below says where each goes and
+how its program is reloaded. What was adjusted is printed and kept in
+~/.cache/theme-select/adjusted.txt (most schemes have a pairing or two below
+these ratios, so it's usually a few small nudges).
+"""
+import colorsys
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES = os.path.join(HERE, "templates")
+HOME = os.path.expanduser("~")
+
+# Contrast ratios (WCAG: 4.5 for normal text, 3 for large text and UI parts)
+TEXT = 4.5        # text on the background shades, and on any colored background
+DIM = 3.0         # dim text on base01, the brightest text, and accents as text
+FAINT = 2.0       # comments (base03): faint on purpose in most schemes
+STEP = 1.06       # neighbouring background shades, so they show apart
+
+SHADES = [f"base0{i}" for i in range(8)]
+ACCENTS = [f"base0{c}" for c in "89ABCDEF"]
+
+
+def reload_qutebrowser():
+    """Reload config.py in a running qutebrowser only (the command would
+    otherwise start one)."""
+    running = subprocess.run(
+        ["pgrep", "-f", "^(/usr/bin/)?python3? .*/usr/bin/qutebrowser"],
+        stdout=subprocess.DEVNULL).returncode == 0
+    if running:
+        subprocess.Popen(["qutebrowser", ":config-source"], stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+
+
+# (template, where it goes, how its program reloads), in this order: i3 is
+# last, since restarting it restarts the bar, which reads bumblebee's theme.
+# Emacs needs no reload command: every emacs watches its theme file (ui.el).
+APPS = [
+    ("kitty.conf", "~/.config/kitty/current-theme.conf", ["pkill", "-USR1", "-x", "kitty"]),
+    ("rofi.rasi", "~/.config/rofi/colors.rasi", None),
+    ("qutebrowser.txt", "~/.config/qutebrowser/scheme", reload_qutebrowser),
+    ("emacs.el", "~/.config/emacs/themes/base16-tinty-theme.el", None),
+    ("bumblebee.json", "~/.config/bumblebee-status/themes/base16-powerline.json", None),
+    ("i3.conf", "~/.config/i3/theme.conf", ["i3-msg", "-q", "restart"]),
+]
+
+
+# ------------------------------------------------------------------ colors
+
+def rgb(hex_):
+    return tuple(int(hex_[i:i + 2], 16) / 255 for i in (0, 2, 4))
+
+
+def hex_(rgb_):
+    return "".join(f"{round(max(0, min(1, c)) * 255):02x}" for c in rgb_)
+
+
+def luminance(hex_color):
+    def channel(c):
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    r, g, b = (channel(c) for c in rgb(hex_color))
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def contrast(a, b):
+    la, lb = luminance(a), luminance(b)
+    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+
+
+def with_lightness(hex_color, light):
+    h, _, s = colorsys.rgb_to_hls(*rgb(hex_color))
+    return hex_(colorsys.hls_to_rgb(h, max(0, min(1, light)), s))
+
+
+def lightness(hex_color):
+    return colorsys.rgb_to_hls(*rgb(hex_color))[1]
+
+
+def push(color, against, ratio, direction):
+    """COLOR made lighter (DIRECTION +1) or darker (-1) just until it has
+    RATIO against AGAINST; as far as it goes if it can't get there."""
+    if contrast(color, against) >= ratio:
+        return color
+    lo, hi = lightness(color), 1.0 if direction > 0 else 0.0
+    if contrast(with_lightness(color, hi), against) < ratio:
+        # can't get there this way (AGAINST is mid-lightness): the other way,
+        # if that does, else as far as the better of the two goes
+        other = 0.0 if direction > 0 else 1.0
+        if contrast(with_lightness(color, other), against) >= ratio:
+            return push(color, against, ratio, -direction)
+        return max((with_lightness(color, hi), with_lightness(color, other)),
+                   key=lambda c: contrast(c, against))
+    for _ in range(30):                  # binary search for the least change
+        mid = (lo + hi) / 2
+        if contrast(with_lightness(color, mid), against) >= ratio:
+            hi = mid
+        else:
+            lo = mid
+    return with_lightness(color, hi)
+
+
+def pull(color, toward, ok, keep_from, floor):
+    """COLOR moved in lightness toward TOWARD (a lightness) just until ok(color)
+    holds, but never closer to KEEP_FROM than FLOOR contrast."""
+    start = lightness(color)
+    best = color
+    for i in range(1, 101):
+        candidate = with_lightness(color, start + (toward - start) * i / 100)
+        if contrast(candidate, keep_from) < floor:
+            break
+        best = candidate
+        if ok(best):
+            break
+    return best
+
+
+def repair(palette):
+    """The palette with failing colors nudged; and what was changed, why."""
+    p = dict(palette)
+    changes = []
+
+    def setc(key, value, why):
+        if value != p[key]:
+            changes.append(f"{key} #{p[key]} → #{value} ({why})")
+            p[key] = value
+
+    # +1: text lighter than the background (a dark scheme); -1: a light one
+    d = 1 if luminance(p["base05"]) >= luminance(p["base00"]) else -1
+    bg_light = lightness(p["base00"])
+
+    setc("base05", push(p["base05"], p["base00"], TEXT, d),
+         f"text on the background was {contrast(palette['base05'], palette['base00']):.1f}:1")
+
+    for shade, below in (("base01", "base00"), ("base02", "base01")):
+        texts = ["base05"] + (["base06"] if shade == "base02" else [])
+        old = p[shade]
+        # step apart from the shade below
+        p[shade] = push(p[shade], p[below], STEP, d)
+        # the text reads on it: bring it back toward the background first
+        reads = lambda c: all(contrast(p[t], c) >= TEXT for t in texts)
+        if not reads(p[shade]):
+            p[shade] = pull(p[shade], bg_light, reads, p[below], STEP)
+        if p[shade] != old:
+            changes.append(f"{shade} #{old} → #{p[shade]} (the text on it was "
+                           f"{min(contrast(palette[t], old) for t in texts):.1f}:1, "
+                           f"{contrast(old, palette[below]):.2f}:1 from {below})")
+        # and if that wasn't enough, lighter text
+        for t in texts:
+            setc(t, push(p[t], p[shade], TEXT, d), f"text on {shade}")
+
+    setc("base03", push(p["base03"], p["base00"], FAINT, d), "comments on the background")
+    setc("base04", push(p["base04"], p["base01"], DIM, d), "dim text on base01")
+    setc("base07", push(p["base07"], p["base02"], DIM, d), "bright text on base02")
+    for a in ACCENTS:
+        setc(a, push(p[a], p["base00"], DIM, d),
+             f"as text on the background it was {contrast(palette[a], palette['base00']):.1f}:1")
+    return p, changes
+
+
+def text_on(p):
+    """For every color, the text that reads on it: the scheme's background or
+    its lightest text if either reaches TEXT (the better one), else black or
+    white, whichever is better (one of them always reaches it)."""
+    lightest = max((p[k] for k in ("base05", "base06", "base07")), key=luminance)
+    darkest = min((p[k] for k in ("base00", "base01")), key=luminance)
+    out = {}
+    for key, color in p.items():
+        own = max((darkest, lightest), key=lambda t: contrast(t, color))
+        if contrast(own, color) >= TEXT:
+            out[key] = own
+        else:
+            out[key] = max(("000000", "ffffff"), key=lambda t: contrast(t, color))
+    return out
+
+
+def as_text(p):
+    """For every accent, the accent made readable as normal text on every
+    background shade (base00..base02): pushed away from each in turn, away
+    from the background, so it ends up clear of all three."""
+    d = 1 if luminance(p["base05"]) >= luminance(p["base00"]) else -1
+    out = {}
+    for key in ACCENTS:
+        color = p[key]
+        for shade in ("base00", "base01", "base02"):
+            color = push(color, p[shade], TEXT, d)
+        out[key] = color
+    return out
+
+
+# ------------------------------------------------------------------ templates
+
+def render(template, values):
+    def fill(m):
+        key = m.group(1)
+        if key not in values:
+            raise KeyError(f"{template}: unknown {{{{{key}}}}}")
+        return values[key]
+    with open(os.path.join(TEMPLATES, template + ".mustache")) as f:
+        return re.sub(r"\{\{\s*([\w-]+)\s*\}\}", fill, f.read())
+
+
+def write(path, text):
+    path = os.path.expanduser(path)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        f.write(text)
+    os.replace(tmp, path)                # whole, never half-written
+
+
+def load(path):
+    with open(path) as f:
+        scheme = json.load(f)
+    scheme["palette"] = {k: v.lower().lstrip("#") for k, v in scheme["palette"].items()}
+    return scheme
+
+
+def apply(path):
+    scheme = load(path)
+    palette, changes = repair(scheme["palette"])
+    values = {"scheme-name": scheme["name"]}
+    for key, color in palette.items():
+        values[f"{key}-hex"] = color
+    for key, color in text_on(palette).items():
+        values[f"on-{key}-hex"] = color
+    for key, color in as_text(palette).items():
+        values[f"text-{key}-hex"] = color
+
+    for template, dest, reload_ in APPS:
+        write(dest, render(template, values))
+        if callable(reload_):
+            reload_()
+        elif reload_ and shutil.which(reload_[0]):
+            subprocess.run(reload_, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    report = (f"{scheme['name']}: adjusted for contrast:\n  " + "\n  ".join(changes)
+              if changes else f"{scheme['name']}: no colors needed adjusting")
+    print(report)
+    cache = os.environ.get("XDG_CACHE_HOME", os.path.join(HOME, ".cache"))
+    write(os.path.join(cache, "theme-select", "adjusted.txt"), report + "\n")
+
+
+def check(paths):
+    changed = 0
+    for path in paths:
+        scheme = load(path)
+        palette, changes = repair(scheme["palette"])
+        on = text_on(palette)
+        assert all(contrast(on[k], c) >= TEXT for k, c in palette.items())
+        if changes:
+            changed += 1
+            print(f"{os.path.basename(path)}:\n  " + "\n  ".join(changes))
+    print(f"{changed} of {len(paths)} schemes adjusted")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 2 and sys.argv[1] == "--check":
+        check(sys.argv[2:])
+    elif len(sys.argv) == 2:
+        apply(sys.argv[1])
+    else:
+        sys.exit(__doc__)

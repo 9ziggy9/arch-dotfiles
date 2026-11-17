@@ -1,60 +1,19 @@
 # tinty: one base16/base24 color scheme for everything. Pick one with
 # theme-select ($mod+Shift+t), or run `theme-select base16-nord`.
 #
-# Each item is a template in ../templates/<name>/templates/default.mustache,
-# rendered for every scheme by `tinty build` (theme-select runs it whenever a
-# template changes). `tinty apply` takes the chosen scheme's file from each
-# and runs its hook, which copies it into place and reloads the program.
-# Hooks run in this order; i3 is last, since restarting it restarts the bar,
-# which reads bumblebee's theme. (Hooks run inside sh -c '...': no single
+# tinty keeps the schemes and remembers the current one. Its one item hands
+# the chosen scheme, as JSON, to apply-scheme (next to this directory), which
+# adjusts any colors that wouldn't read, fills in every program's template
+# (../templates) and reloads the programs. The JSON is rendered for every
+# scheme ahead of time by `tinty build`, which theme-select runs whenever
+# the scheme template changes. (Hooks run inside sh -c '...': no single
 # quotes in them.)
 
 default-scheme = "base16-solarized-dark"
 
 [[items]]
-name = "kitty"
-path = "~/.config/tinted-theming/templates/kitty"
+name = "scheme"
+path = "~/.config/tinted-theming/scheme"
 themes-dir = "themes"
 supported-systems = ["base16", "base24"]
-# SIGUSR1: every running kitty reloads its config (kitty.conf includes this)
-hook = "cp -f \"$TINTY_THEME_FILE_PATH\" ~/.config/kitty/current-theme.conf; pkill -USR1 -x kitty; true"
-
-[[items]]
-name = "rofi"
-path = "~/.config/tinted-theming/templates/rofi"
-themes-dir = "themes"
-supported-systems = ["base16", "base24"]
-hook = "cp -f \"$TINTY_THEME_FILE_PATH\" ~/.config/rofi/colors.rasi"
-
-[[items]]
-name = "qutebrowser"
-path = "~/.config/tinted-theming/templates/qutebrowser"
-themes-dir = "themes"
-supported-systems = ["base16", "base24"]
-# reload config.py, only in a running qutebrowser (the command would
-# otherwise start one); the anchored pattern skips this hook's own shell
-hook = "cp -f \"$TINTY_THEME_FILE_PATH\" ~/.config/qutebrowser/scheme; if pgrep -f \"^(/usr/bin/)?python3? .*/usr/bin/qutebrowser\" >/dev/null; then qutebrowser :config-source >/dev/null 2>&1 & fi; true"
-
-[[items]]
-name = "emacs"
-path = "~/.config/tinted-theming/templates/emacs"
-themes-dir = "themes"
-supported-systems = ["base16", "base24"]
-# the theme base16-tinty; every running emacs watches this file and
-# reloads it as soon as it changes (ui.el)
-hook = "mkdir -p ~/.config/emacs/themes && cp -f \"$TINTY_THEME_FILE_PATH\" ~/.config/emacs/themes/base16-tinty-theme.el"
-
-[[items]]
-name = "bumblebee"
-path = "~/.config/tinted-theming/templates/bumblebee"
-themes-dir = "themes"
-supported-systems = ["base16", "base24"]
-hook = "mkdir -p ~/.config/bumblebee-status/themes && cp -f \"$TINTY_THEME_FILE_PATH\" ~/.config/bumblebee-status/themes/base16-powerline.json"
-
-[[items]]
-name = "i3"
-path = "~/.config/tinted-theming/templates/i3"
-themes-dir = "themes"
-supported-systems = ["base16", "base24"]
-# restart, not reload: only a restart restarts the bar (windows stay put)
-hook = "cp -f \"$TINTY_THEME_FILE_PATH\" ~/.config/i3/theme.conf; i3-msg -q restart >/dev/null 2>&1; true"
+hook = "python3 -I ~/.config/tinted-theming/apply-scheme \"$TINTY_THEME_FILE_PATH\""

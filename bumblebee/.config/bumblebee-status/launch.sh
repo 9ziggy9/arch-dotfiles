@@ -7,11 +7,24 @@ theme=base16-powerline
 
 # Modules, left to right, each with its share of the bar: 10 is a normal
 # share, 5 half of one, 20 double. A module never gets less than its text needs.
-modules=(cpu:10 memory:10 disk:10 pasink:5 datetime:10)
+modules=(nic:10 cpu:5 memory:5 disk:8 pasink:5 time:5)
+
+# The battery, only on a machine that has one (a laptop), before the volume
+if compgen -G "/sys/class/power_supply/BAT*" >/dev/null; then
+    with=()
+    for m in "${modules[@]}"; do
+        [ "${m%%:*}" = pasink ] && with+=(battery:6)
+        with+=("$m")
+    done
+    modules=("${with[@]}")
+fi
 
 # The frame and workspace square take the theme's text color. To pick one
 # yourself, set it here, e.g. frame="#ffffff".
 frame=""
+
+# The frame also runs along the arrows' slanted edges (statusline.py): yes/no
+outline_arrows=yes
 
 # Before any scheme has been applied, a stock theme
 [ -s "$dir/themes/$theme.json" ] || theme=solarized-powerline
@@ -29,7 +42,17 @@ for m in "${modules[@]}"; do
     names+=("${m%%:*}")
     shares+="${shares:+,}\"${m%%:*}\":${m##*:}"
 done
-params=(disk.path=/ "datetime.format=%a %d %b  %H:%M")
+# Network: the connected interfaces only (not the modem or virtual ones),
+# with the Wi-Fi network's name ({ssid} needs the iw package) and the address
+# The disk whose space is shown (white when empty, red when full)
+disk_path=/
+
+params=(
+    "disk.path=$disk_path" "disk.format={left} free"
+    "memory.format={percent:.0f}%" "cpu.format={:.0f}%"
+    nic.states=up "nic.format={ssid} {ip}" "nic.exclude=lo,wwp,virbr,docker,vboxnet,veth,br,tun,.*:avahi"
+    time.format=%H:%M
+)
 
 bin=/usr/bin/bumblebee-status
 if [ ! -x "$bin" ]; then
@@ -38,6 +61,6 @@ if [ ! -x "$bin" ]; then
     sleep infinity
 fi
 
-# Clicks from i3bar still reach bumblebee-status: only its output is piped
+# Nothing on the bar is clickable: statusline.py turns clicks off
 "$bin" -m "${names[@]}" -p "${params[@]}" -t "$theme" --iconset roomy \
-    | STATUSLINE_FRAME="$frame" python3 -Iu "$dir/statusline.py" "{$shares}"
+    | STATUSLINE_FRAME="$frame" STATUSLINE_ARROW_OUTLINE="$outline_arrows" STATUSLINE_DISK_PATH="$disk_path" python3 -Iu "$dir/statusline.py" "{$shares}"

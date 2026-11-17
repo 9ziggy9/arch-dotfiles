@@ -2,9 +2,9 @@
 # a real directory and generated or runtime files are written there, not here.
 # These rules are a safety net in case one ever lands in the repo.
 
-# Written by tinty (theme-select): every scheme rendered from the templates,
+# Written by tinty and apply-scheme (theme-select): every scheme as JSON,
 # and the chosen one copied into each program's config
-tinty/.config/tinted-theming/templates/*/themes/
+tinty/.config/tinted-theming/scheme/themes/
 kitty/.config/kitty/current-theme.conf
 rofi/.config/rofi/colors.rasi
 qutebrowser/.config/qutebrowser/scheme
