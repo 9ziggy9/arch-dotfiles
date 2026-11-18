@@ -25,7 +25,8 @@ source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+# fzf: Ctrl+T files, Ctrl+R history, Alt+C cd, ** completion (pacman package)
+command -v fzf >/dev/null && source <(fzf --zsh)
 
 # PATH
 export PATH="$HOME/bin:$PATH"
