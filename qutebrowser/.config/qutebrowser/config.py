@@ -188,6 +188,7 @@ c.statusbar.padding = {"top": 0, "bottom": 0, "left": 0, "right": 0}  # with the
 # loading bar) is made a 1px full-height line in the frame color: a divider
 # between tabs. While a page loads it still shows the progress colors, then
 # goes back to the frame color.
+c.tabs.show = "multiple"             # hide the tab bar when there is only one tab
 c.fonts.tabs.selected = "bold default_size default_family"
 c.fonts.tabs.unselected = "default_size default_family"
 c.tabs.favicons.show = "never"
