@@ -118,7 +118,7 @@ cat <<'EOF'
   - Emacs downloads its packages on first launch; when a PDF first opens,
     let pdf-tools build epdfinfo
   - forge: a GitHub token in ~/.authinfo; gh: gh auth login
-  - Boox over Wi-Fi: plug it in, then boox-screen --wifi
+  - Boox over Wi-Fi: plug it in and press $mod+s once (or run boox-screen --wifi)
   - Vesktop (Discord), once: Settings > Themes, tick base16-tinty.css;
     Settings > Plugins, turn on KeepCurrentChannel
 EOF

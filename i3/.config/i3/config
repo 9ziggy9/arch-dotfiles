@@ -88,7 +88,7 @@ bindsym Print exec --no-startup-id mkdir -p "$HOME/scrots" && flameshot gui --pa
 bindsym $mod+s exec --no-startup-id boox-screen
 assign [class="^scrcpy$" title="^Boox$"] number 10
 for_window [class="^scrcpy$" title="^Boox$"] fullscreen enable
-# compositor: inverts the Boox window so it matches the dark Boox panel (~/.config/picom/picom.conf)
+# compositor: recolors the Boox window in the color scheme (~/.config/picom/picom.conf)
 exec --no-startup-id picom
 
 # key bindings: lists these bindings in rofi (~/.local/bin/i3-keys)

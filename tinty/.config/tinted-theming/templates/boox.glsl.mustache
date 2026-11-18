@@ -1,0 +1,53 @@
+#version 330
+// picom shader for the Boox mirror (scrcpy), filled in with the scheme by
+// apply-scheme: {{scheme-name}}.
+//
+// The mirror arrives light (white paper, black ink, a few colored inks).
+// Recolor it in the scheme: grays run from the background (paper) to the
+// text color (ink), and colored ink becomes the scheme accent nearest in
+// hue, made readable as text on the background.
+
+in vec2 texcoord;
+uniform sampler2D tex;
+vec4 default_post_processing(vec4 c);
+
+vec3 hex(int h) { return vec3((h >> 16) & 255, (h >> 8) & 255, h & 255) / 255.0; }
+
+const float LUMA_R = 0.299, LUMA_G = 0.587, LUMA_B = 0.114;
+float luma(vec3 c) { return dot(c, vec3(LUMA_R, LUMA_G, LUMA_B)); }
+
+// direction of a color away from gray, so hues can be compared
+vec3 chroma(vec3 c) { return c - vec3(luma(c)); }
+
+vec4 window_shader() {
+    vec4 px = texelFetch(tex, ivec2(texcoord), 0);
+    vec3 c = px.rgb;
+
+    vec3 bg = hex(0x{{base00-hex}});
+    vec3 fg = hex(0x{{base05-hex}});
+    vec3 gray = mix(fg, bg, luma(c));
+
+    vec3 accents[7] = vec3[](
+        hex(0x{{text-base08-hex}}), hex(0x{{text-base09-hex}}),
+        hex(0x{{text-base0A-hex}}), hex(0x{{text-base0B-hex}}),
+        hex(0x{{text-base0C-hex}}), hex(0x{{text-base0D-hex}}),
+        hex(0x{{text-base0E-hex}}));
+
+    // how colored the pixel is; nearly gray pixels stay gray
+    float sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
+    float amount = smoothstep(0.08, 0.30, sat);
+    if (amount <= 0.0)
+        return default_post_processing(vec4(gray, px.a));
+
+    vec3 dir = normalize(chroma(c));
+    vec3 accent = accents[0];
+    float best = -2.0;
+    for (int i = 0; i < 7; i++) {
+        vec3 a = chroma(accents[i]);
+        float len = length(a);
+        if (len < 0.02) continue;              // a gray "accent" matches nothing
+        float d = dot(dir, a / len);
+        if (d > best) { best = d; accent = accents[i]; }
+    }
+    return default_post_processing(vec4(mix(gray, accent, amount), px.a));
+}

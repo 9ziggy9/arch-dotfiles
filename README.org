@@ -132,8 +132,10 @@ runs as a daemon started by i3, so new windows open instantly. Its own
   pixelated screenshot, with a small, thin ring in the scheme's colors.
   It runs through =xss-lock=, so locking before suspend looks the same.
 - An Onyx Boox e-ink tablet works as a second screen. =boox-screen=
-  mirrors it with scrcpy over USB or Wi-Fi, and picom inverts the colors
-  to match the dark panel.
+  mirrors it with scrcpy over USB or Wi-Fi, and picom recolors it in the
+  color scheme: paper as the background, ink as the text color.
+  =boox-ink= draws pen strokes over the mirror while they're drawn,
+  since Boox Notes only hands them to the screen on pen-up.
 - Kitty's scrollback opens in Neovim, so it can be searched and copied
   like a file.
 
@@ -154,7 +156,7 @@ files go in =~=:
 | =vesktop=     | Discord: its launcher (named Discord in rofi) and the QuickCSS that flattens it |
 | =emacs=       | the editor                                                          |
 | =tinty=       | the color scheme and font pipeline: tinty's config, =apply-scheme=, the templates |
-| =bin=         | scripts in =~/.local/bin=: =theme-select=, =font-select=, =i3-keys=, =boox-screen=, =blur-lock=, ... |
+| =bin=         | scripts in =~/.local/bin=: =theme-select=, =font-select=, =i3-keys=, =boox-screen=, =boox-ink=, =blur-lock=, ... |
 
 Stow runs with =--no-folding= (see =.stowrc=), so it links individual
 files and never whole directories. Directories like =~/.config/kitty=

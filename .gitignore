@@ -12,6 +12,9 @@ qutebrowser/.config/qutebrowser/scheme
 qutebrowser/.config/qutebrowser/claude.css
 bumblebee/.config/bumblebee-status/themes/
 i3/.config/i3/theme.conf
+# (picom looks for its shader beside the real picom.conf, so this one is
+# written here on purpose)
+picom/.config/picom/boox.glsl
 emacs/.config/emacs/themes/
 vesktop/.config/vesktop/themes/
 

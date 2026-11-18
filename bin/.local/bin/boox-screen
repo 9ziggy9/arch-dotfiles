@@ -9,10 +9,20 @@
 # USB is used when the Boox is plugged in; otherwise it connects over Wi-Fi
 # to the address in ~/.config/boox-screen/ip (kept out of the dotfiles).
 #
-#   boox-screen --wifi   with the Boox on USB: turn on adb over Wi-Fi
-#                        (port 5555) and save its address. Needed again
-#                        after every Boox reboot. It restarts adb on the
-#                        Boox, so a running mirror is closed.
+# A Boox reboot turns adb over Wi-Fi off. So whenever the mirror starts
+# over USB, Wi-Fi is turned back on first (port 5555) and the Boox's
+# address saved: after any plugged-in $mod+s, unplugging and pressing
+# $mod+s again reconnects over Wi-Fi.
+#
+#   boox-screen --wifi   with the Boox on USB: do just that by hand. It
+#                        restarts adb on the Boox, so a running mirror
+#                        is closed.
+#
+# The mirror is cropped to hide the Notes toolbars (see crop below).
+#
+# boox-ink runs alongside the mirror and draws pen strokes over it while
+# they're being drawn (the mirror only gets them on pen-up); its output goes
+# to ~/.cache/boox-ink.log.
 #
 # scrcpy's output goes to ~/.cache/boox-screen.log.
 
@@ -20,6 +30,12 @@ title=Boox
 ws=10
 port=5555
 ipfile="$HOME/.config/boox-screen/ip"
+# Cut the Notes app's toolbars (left 144 px, top 116 px of the 2480x1860
+# landscape screen) out of the mirror; the Boox itself keeps them. scrcpy
+# takes the crop in the panel's portrait orientation, so it reads
+# height:width:top:left. Sizes are multiples of 16 for the encoder.
+# Measured for Notes in this landscape orientation only.
+crop=1744:2336:116:144
 
 fail() {
     notify-send -u normal "Boox screen" "$1"
@@ -32,16 +48,27 @@ usb_serial() {
     adb devices -l | awk '$2 == "device" && / usb:/ { print $1; exit }'
 }
 
+# with the Boox on USB ($1): save its Wi-Fi address and make adb listen on
+# $port, unless it already does. Prints the address; returns 1 without one.
+arm_wifi() {
+    ip=$(adb -s "$1" shell ip -4 addr show wlan0 |
+        awk '/inet / { sub("/.*", "", $2); print $2; exit }')
+    [ -n "$ip" ] || return 1
+    mkdir -p "${ipfile%/*}"
+    echo "$ip" >"$ipfile"
+    if [ "$(adb -s "$1" shell getprop service.adb.tcp.port | tr -d '\r')" != "$port" ]; then
+        adb -s "$1" tcpip "$port" >/dev/null || return 1
+        # adb restarts on the Boox; wait for it to come back on USB
+        sleep 2
+        timeout 15 adb -s "$1" wait-for-usb-device
+    fi
+    echo "$ip"
+}
+
 if [ "$1" = --wifi ]; then
     serial=$(usb_serial)
     [ -n "$serial" ] || fail "Plug the Boox in over USB first (with USB debugging allowed)."
-    ip=$(adb -s "$serial" shell ip -4 addr show wlan0 |
-        awk '/inet / { sub("/.*", "", $2); print $2; exit }')
-    [ -n "$ip" ] || fail "The Boox has no Wi-Fi address. Is it on Wi-Fi?"
-    mkdir -p "${ipfile%/*}"
-    echo "$ip" >"$ipfile"
-    adb -s "$serial" tcpip "$port" >/dev/null || fail "Could not turn on adb over Wi-Fi."
-    sleep 2
+    ip=$(arm_wifi "$serial") || fail "Could not turn on adb over Wi-Fi. Is the Boox on Wi-Fi?"
     adb connect "$ip:$port"
     exit 0
 fi
@@ -55,13 +82,24 @@ fi
 
 i3-msg -q "workspace number $ws"
 
+# live pen strokes over the mirror (boox-ink), unless already running
+ink() {
+    pgrep -f -- "boox-ink " >/dev/null ||
+        setsid -f boox-ink "$1" "$crop" >"$HOME/.cache/boox-ink.log" 2>&1
+}
+
 if pgrep -f -- "scrcpy --window-title $title( |\$)" >/dev/null; then
     i3-msg -q "[class=\"^scrcpy\$\" title=\"^$title\$\"] move to workspace number $ws, focus, fullscreen enable" 2>/dev/null
+    ink "$(pgrep -af -- "scrcpy --window-title $title( |\$)" | sed -n 's/.* -s \([^ ]*\).*/\1/p' | head -1)"
     exit 0
 fi
 
 serial=$(usb_serial)
-if [ -z "$serial" ]; then
+if [ -n "$serial" ]; then
+    # not fatal: the USB mirror works without Wi-Fi
+    arm_wifi "$serial" >/dev/null ||
+        notify-send -u low "Boox screen" "Could not turn on adb over Wi-Fi (is the Boox on Wi-Fi?)."
+else
     [ -s "$ipfile" ] || fail "No Boox on USB, and no Wi-Fi address saved.
 Plug it in, or run boox-screen --wifi once with it plugged in."
     serial="$(cat "$ipfile"):$port"
@@ -70,11 +108,13 @@ Plug it in, or run boox-screen --wifi once with it plugged in."
     fi
     state=$(adb -s "$serial" get-state 2>&1)
     [ "$state" = device ] || fail "Could not reach the Boox at $serial.
-Is it awake and on Wi-Fi? After a Boox reboot, plug it in and run boox-screen --wifi.
+Is it awake and on Wi-Fi? After a Boox reboot, plug it in and press \$mod+s once.
 ($state)"
 fi
 
 # --no-audio: the Boox has no opus encoder, and scrcpy quits without it
 mkdir -p "$HOME/.cache"
-setsid -f scrcpy --window-title "$title" -s "$serial" --stay-awake --no-audio \
+setsid -f scrcpy --window-title "$title" -s "$serial" --stay-awake --no-audio --crop="$crop" \
     >"$HOME/.cache/boox-screen.log" 2>&1
+pkill -f -- "boox-ink " 2>/dev/null   # one left from a mirror on another connection
+ink "$serial"
