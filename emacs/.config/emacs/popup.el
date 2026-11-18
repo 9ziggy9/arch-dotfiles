@@ -78,7 +78,7 @@ like evil-collection do bind it, so popup keys are bound under both.")
                   (keymap-set map alias cmd)))
     map))
 
-;; Relative to the mode line, which modeline.el already shrinks to 0.85
+;; Relative to the popup's mode line, where its hints are shown
 (defface pop/hint-key '((t :inherit font-lock-keyword-face :weight bold :height 0.9))
   "Face for a key in a popup's hint line.")
 

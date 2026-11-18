@@ -5,8 +5,8 @@
 (setq initial-scratch-message nil)
 
 ;; Disable ALL backup and temporary files
-(setq make-backup-files nil)              ; Disable backup files (#...#)
-(setq auto-save-default nil)              ; Disable auto-save files
+(setq make-backup-files nil)              ; Disable backup files (file~)
+(setq auto-save-default nil)              ; Disable auto-save files (#file#)
 (setq auto-save-list-file-prefix nil)     ; Disable auto-save session files
 (setq create-lockfiles nil)               ; Disable lock files (.#...)
 

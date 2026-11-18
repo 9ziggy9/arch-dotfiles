@@ -53,6 +53,24 @@ theme), or nil when it isn't a base16 theme."
          (var (and theme (intern-soft (format "%s-theme-colors" theme)))))
     (and var (boundp var) (plist-get (symbol-value var) key))))
 
+;; apply-scheme has already worked out readable pairings for tinty's scheme
+;; and put them in the theme file; these hand them out, or nil under any
+;; other theme (callers fall back to their own colors)
+(defun my/scheme-tinty-value (var key)
+  "KEY's entry in VAR, one of the theme file's plists, while it's the theme."
+  (and (memq 'base16-tinty custom-enabled-themes)
+       (boundp var)
+       (plist-get (symbol-value var) key)))
+
+(defun my/scheme-text (key)
+  "Accent KEY (:base08 .. :base0F) as a color that reads as normal text on
+every background shade of the scheme (base00 to base02)."
+  (my/scheme-tinty-value 'base16-tinty-theme-as-text key))
+
+(defun my/scheme-text-on (key)
+  "The text color that reads on scheme color KEY used as a background."
+  (my/scheme-tinty-value 'base16-tinty-theme-text-on key))
+
 ;; Face tweaks that hold in every scheme.  Faces set in the `user' theme win
 ;; over the loaded theme and only replace the attributes given, so these
 ;; survive scheme switches without being redone.
@@ -63,6 +81,15 @@ theme), or nil when it isn't a base16 theme."
  ;; size (it inherits the height) and not highlighted
  '(line-number-current-line ((t :inherit line-number :weight bold)))
  '(corfu-default      ((t :height 0.75)))  ; completion popup text
+ ;; code: keywords and types bold, functions (definitions and calls)
+ ;; italic, macros plain even where they look like functions; colors stay
+ ;; the scheme's.  Calls are highlighted in C (langs.el); macros are told
+ ;; apart by clangd
+ '(font-lock-keyword-face       ((t :weight bold)))
+ '(font-lock-type-face          ((t :weight bold)))
+ '(font-lock-function-name-face ((t :slant italic)))
+ '(font-lock-function-call-face ((t :slant italic)))
+ '(eglot-semantic-macro         ((t :slant normal :weight normal)))
  ;; org: bigger headings, the folded-heading ellipsis without an underline
  '(org-document-title ((t :height 1.5 :weight bold)))
  '(org-level-1 ((t :height 1.3 :weight bold)))
@@ -97,7 +124,18 @@ out again in its next window (`my/recolor-new-frame')."
   ;; frames made from now on open in the new colors (see early-init.el)
   (setf (alist-get 'background-color default-frame-alist) (my/scheme-color :base00)
         (alist-get 'foreground-color default-frame-alist) (my/scheme-color :base05))
+  (my/tinty-font)
   nil)
+
+;; The font picked with font-select comes in the same file: open windows
+;; switch to it, and new ones open in it
+(defun my/tinty-font ()
+  "Use the font family in tinty's theme file, if it's new."
+  (when-let* ((family (bound-and-true-p base16-tinty-font))
+              (font (format "%s-%s" family (bound-and-true-p my/font-size)))
+              ((not (equal font (alist-get 'font default-frame-alist)))))
+    (setf (alist-get 'font default-frame-alist) font)
+    (set-frame-font font nil t t)))
 
 ;; Every emacs (the daemon, or one started on its own) watches the theme
 ;; file, so a scheme picked with theme-select shows at once, everywhere
@@ -128,15 +166,37 @@ file-notify event in its directory)."
 
 ;; The scheme's accent (its yellow) on the jump labels (avy, M-SPC), one
 ;; color for every label like qutebrowser's hints; the current line's
-;; number in its green, on the line numbers' own background; and the
-;; popup's border in its orange
+;; number in its green, on the line numbers' own background; the popups'
+;; border in its orange; and code past the fill column (langs.el) in a red
+;; that reads on the background, done again when whitespace loads.
 (defun my/scheme-faces (&optional theme)
   (when-let* ((orange (my/scheme-color :base09 theme)))
     (setq pop/border-color orange)
     (when (frame-live-p pop/frame)
       (set-face-background 'child-frame-border orange pop/frame)))
+  ;; vertico's rows (completion.el), like rofi's.  The list sits on the
+  ;; bar's colors (base01, modeline.el), so the stripes are the bar's
+  ;; second shade, base02, which the text reads on; the selected row is
+  ;; the scheme's yellow, with the text that reads on it.
+  (let ((bg (face-background 'mode-line nil t))
+        (fg (face-foreground 'mode-line nil t)))
+    (set-face-background 'my/vertico-stripe
+                         (or (my/scheme-color :base02 theme)
+                             (and (color-defined-p bg) (color-defined-p fg)
+                                  (my/mix bg fg 0.12)))))
+  (when (facep 'vertico-current)
+    (let ((yellow (my/scheme-color :base0A theme))
+          (text (my/scheme-text-on :base0A)))
+      (if (and yellow text)
+          (set-face-attribute 'vertico-current nil :background yellow :foreground text)
+        (set-face-attribute 'vertico-current nil :background 'unspecified
+                            :foreground 'unspecified))))
+  (when (facep 'whitespace-line)
+    (set-face-foreground 'whitespace-line
+                         (or (my/scheme-text :base08)
+                             (my/readable "#ff5f5f" (face-background 'default nil t)))))
   (let ((accent (my/scheme-color :base0A theme))
-        (text (or (plist-get (bound-and-true-p base16-tinty-theme-text-on) :base0A)
+        (text (or (my/scheme-text-on :base0A)
                   (my/scheme-color :base00 theme))))
     (when (and accent text)
       (dolist (face '(avy-lead-face avy-lead-face-0 avy-lead-face-1 avy-lead-face-2))

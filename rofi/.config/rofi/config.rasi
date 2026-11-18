@@ -4,7 +4,6 @@ configuration {
     drun-display-format: "{name}";
     display-drun:        "apps";
     display-run:         "run";
-    font:                "MesloLGS Nerd Font Mono 10";
 
     /* vim-style: Ctrl+j down, Ctrl+k up (taken from accept and delete-to-end) */
     kb-row-down:         "Down,Control+n,Control+j";
@@ -13,5 +12,6 @@ configuration {
     kb-remove-to-eol:    "";
 }
 
-/* layout; colors come from colors.rasi, which follows the color scheme */
+/* layout; colors and the font come from colors.rasi, which follows the
+   color scheme and the font picked with font-select */
 @theme "~/.config/rofi/theme.rasi"

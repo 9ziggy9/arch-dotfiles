@@ -5,6 +5,7 @@
 # Written by tinty and apply-scheme (theme-select): every scheme as JSON,
 # and the chosen one copied into each program's config
 tinty/.config/tinted-theming/scheme/themes/
+tinty/.config/tinted-theming/font
 kitty/.config/kitty/current-theme.conf
 rofi/.config/rofi/colors.rasi
 qutebrowser/.config/qutebrowser/scheme

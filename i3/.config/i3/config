@@ -32,13 +32,8 @@ bindsym $mod+d exec --no-startup-id $dropdown
 # Emacs client
 exec --no-startup-id emacs --daemon
 
-# Font for window titles. Will also be used by the bar unless a different font
-# is used in the bar {} block below.
-font pango:monospace 8
-
-# This font is widely installed, provides lots of unicode glyphs, right-to-left
-# text rendering and scalability on retina/hidpi displays (thanks to pango).
-#font pango:DejaVu Sans Mono 8
+# Fonts for window titles and the bar: the family picked with font-select
+# ($mod+Shift+f), set in theme.conf (below) with the colors
 
 # Start XDG autostart .desktop files using dex. See also
 # https://wiki.archlinux.org/index.php/XDG_Autostart
@@ -82,6 +77,9 @@ bindsym $mod+p exec --no-startup-id rofi -show drun
 
 # color scheme picker (rofi): recolors everything together, through tinty
 bindsym $mod+Shift+t exec --no-startup-id theme-select
+
+# font picker (rofi): one monospace font for kitty, i3, rofi, qutebrowser and emacs
+bindsym $mod+Shift+f exec --no-startup-id font-select
 
 # screenshot: pick an area with flameshot; Enter or Ctrl+S saves it to ~/scrots
 bindsym Print exec --no-startup-id mkdir -p "$HOME/scrots" && flameshot gui --path "$HOME/scrots"

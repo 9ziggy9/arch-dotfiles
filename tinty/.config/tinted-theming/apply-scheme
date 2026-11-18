@@ -34,7 +34,11 @@ for colored text that can land on any of them, like the bar's warnings.
 
 Templates are templates/<program>.mustache, with {{base0A-hex}} (no #),
 {{on-base0A-hex}}, {{text-base0A-hex}} and {{scheme-name}}; APPS below says where each goes and
-how its program is reloaded. What was adjusted is printed and kept in
+how its program is reloaded.
+
+The font goes in with the colors: {{font-family}}, the family picked
+with font-select (kept in ./font, next to this script), each program at
+its own size. What was adjusted is printed and kept in
 ~/.cache/theme-select/adjusted.txt (most schemes have a pairing or two below
 these ratios, so it's usually a few small nudges).
 """
@@ -49,6 +53,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES = os.path.join(HERE, "templates")
 HOME = os.path.expanduser("~")
+FONT_FILE = os.path.join(HERE, "font")
+DEFAULT_FONT = "MesloLGS Nerd Font Mono"
 
 # Contrast ratios (WCAG: 4.5 for normal text, 3 for large text and UI parts)
 TEXT = 4.5        # text on the background shades, and on any colored background
@@ -254,10 +260,19 @@ def load(path):
     return scheme
 
 
+def font_family():
+    """The font family picked with font-select, or the default."""
+    try:
+        with open(FONT_FILE) as f:
+            return f.read().strip() or DEFAULT_FONT
+    except OSError:
+        return DEFAULT_FONT
+
+
 def apply(path):
     scheme = load(path)
     palette, changes = repair(scheme["palette"])
-    values = {"scheme-name": scheme["name"]}
+    values = {"scheme-name": scheme["name"], "font-family": font_family()}
     for key, color in palette.items():
         values[f"{key}-hex"] = color
     for key, color in text_on(palette).items():

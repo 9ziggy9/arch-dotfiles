@@ -42,6 +42,21 @@
         :base0C "#{{on-base0C-hex}}" :base0D "#{{on-base0D-hex}}"
         :base0E "#{{on-base0E-hex}}" :base0F "#{{on-base0F-hex}}"))
 
+(defvar base16-tinty-font nil
+  "The font family picked with font-select (ui.el applies it).")
+
+(setq base16-tinty-font "{{font-family}}")
+
+(defvar base16-tinty-theme-as-text nil
+  "For each accent of the scheme, a shade of it that reads as normal text
+on every background shade (base00 to base02).")
+
+(setq base16-tinty-theme-as-text
+      '(:base08 "#{{text-base08-hex}}" :base09 "#{{text-base09-hex}}"
+        :base0A "#{{text-base0A-hex}}" :base0B "#{{text-base0B-hex}}"
+        :base0C "#{{text-base0C-hex}}" :base0D "#{{text-base0D-hex}}"
+        :base0E "#{{text-base0E-hex}}" :base0F "#{{text-base0F-hex}}"))
+
 (deftheme base16-tinty "{{scheme-name}}, the scheme tinty last applied.")
 
 ;; base16-theme makes gnus's "-empty" group faces inherit from the plain

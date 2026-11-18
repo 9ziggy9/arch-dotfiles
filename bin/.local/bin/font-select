@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Pick a monospace font with rofi and switch everything to it: kitty, i3's
+# window titles and bar, rofi, qutebrowser's interface and emacs. Each keeps
+# its own size. Bound to $mod+Shift+f in i3; theme-select's twin.
+#
+#   font-select           pick with rofi
+#   font-select FAMILY    switch straight to FAMILY, e.g. "Iosevka Nerd Font"
+#
+# The family is kept in ~/.config/tinted-theming/font, and goes into every
+# program's config with the colors: this re-applies the current color scheme
+# through tinty, whose ~/.config/tinted-theming/apply-scheme fills in the
+# templates (each has {{font-family}} where its font goes) and reloads the
+# programs, as on a scheme switch.
+
+export PATH="$HOME/.cargo/bin:$PATH"   # tinty; X sessions don't read .zshrc
+font_file="$HOME/.config/tinted-theming/font"
+default="MesloLGS Nerd Font Mono"      # apply-scheme's, when none is picked
+
+fail() { notify-send -u critical "font" "$1" 2>/dev/null; echo "$1" >&2; exit 1; }
+
+command -v tinty >/dev/null || fail "tinty is not installed: cargo install --locked tinty"
+
+# Every monospace family that has letters: fixed-width ones, and the "dual
+# width" ones (Iosevka's, the plain Nerd Font variants), whose wide icons
+# are allowed to take two cells. Icon-only fonts lack the letters (lang=en).
+fonts="$(fc-list ':spacing=100:lang=en' family; fc-list ':spacing=90:lang=en' family)"
+fonts="$(printf '%s\n' "$fonts" | sed 's/,.*//; s/\\//g' | sort -u)"
+[ -n "$fonts" ] || fail "No monospace fonts found (fc-list)"
+
+current="$(cat "$font_file" 2>/dev/null)"
+current="${current:-$default}"
+
+choice="$1"
+if [ -z "$choice" ]; then
+    row="$(printf '%s\n' "$fonts" | awk -v c="$current" '$0==c{print NR-1; f=1; exit} END{if(!f) print 0}')"
+    # Rows are pango markup: each family's name, and a line to judge it by,
+    # in that font itself. rofi hands back the row number (-format i).
+    picked="$(printf '%s\n' "$fonts" | python3 -Ic '
+import sys
+from html import escape
+sample = "0O 1lI {}[]() => != == ->  fn main() { return 42; }"
+for name in sys.stdin.read().splitlines():
+    print(f"<span font_family=\"{escape(name)}\">{escape(name):<40} {escape(sample)}</span>")' \
+      | rofi -dmenu -i -no-show-icons -markup-rows -format i -p "font" \
+          -mesg "current: $current" -selected-row "$row")"
+    [ -z "$picked" ] && exit 0
+    choice="$(printf '%s\n' "$fonts" | awk -v n="$((picked + 1))" 'NR==n')"
+fi
+printf '%s\n' "$fonts" | grep -qxF -- "$choice" || fail "No such monospace font: $choice"
+
+# Kept for apply-scheme, then the current scheme applied again, now with it
+mkdir -p "$(dirname "$font_file")"
+printf '%s\n' "$choice" > "$font_file"
+scheme="$(tinty current 2>/dev/null)"
+[ -n "$scheme" ] || fail "No color scheme applied yet: pick one with theme-select first"
+tinty apply "$scheme" || fail "tinty apply $scheme failed"

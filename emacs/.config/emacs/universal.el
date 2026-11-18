@@ -124,25 +124,30 @@ From a popup, the popup closes and this acts on the main frame."
       tab-bar-new-button-show nil)
 
 ;; The tab bar looks like kitty's slanted powerline tabs, slim: every tab on
-;; a muted shade of the theme, the selected one told apart by its bold text in
-;; the scheme's accent (its yellow); tabs are divided by a thin ╱ and the last ends in a slant ().
-;; Recolored with every theme.
+;; the scheme's first shade above the background (base01, like kitty's
+;; inactive tabs) in its normal text, the selected one told apart by bold
+;; text in the scheme's accent (its yellow); tabs are divided by a thin ╱
+;; and the last ends in a slant.  Under tinty's scheme these are pairings
+;; apply-scheme made readable; under any other theme, shades mixed from its
+;; colors, with the text checked.  Recolored with every theme.
 
 (defun univ/tab-name (tab i)
   "TAB, the I-th tab, drawn like a kitty powerline tab."
   (let* ((bar (face-background 'default nil t))
          (fg (face-foreground 'default nil t))
-         (bg (my/mix bar fg 0.12))
+         (tinty (my/scheme-text :base0A))  ; nil under other themes
+         (bg (if tinty (my/scheme-color :base01) (my/mix bar fg 0.12)))
+         (text (if tinty (my/scheme-color :base05)
+                 (my/readable (my/mix bar fg 0.6) bg)))
+         (accent (or tinty (my/readable (or (my/scheme-color :base0A) fg) bg)))
          (current (eq (car tab) 'current-tab))
          (last (= i (length (funcall tab-bar-tabs-function))))  ; I counts from 1
          (name (truncate-string-to-width (alist-get 'name tab) 30 nil nil "…")))
     (concat
      (propertize (format " %d %s " i name)
                  'face (if current
-                           `(:background ,bg
-                             :foreground ,(my/readable (or (my/scheme-color :base0A) fg) bg)
-                             :weight bold)
-                         `(:background ,bg :foreground ,(my/mix bar fg 0.6))))
+                           `(:background ,bg :foreground ,accent :weight bold)
+                         `(:background ,bg :foreground ,text)))
      (if last
          (propertize "" 'face `(:background ,bar :foreground ,bg))
        (propertize "╱" 'face `(:background ,bg :foreground ,bar))))))
@@ -181,7 +186,7 @@ From a popup, the popup closes and this acts on the main frame."
 
 (defvar-keymap univ-search-map
   :doc "M-s: search."
-  "M-f" #'find-file       ; a file, anywhere in the project
+  "M-f" #'find-file               ; open a file (any directory)
   "M-d" #'consult-line            ; text in this document
   "M-i" #'consult-imenu           ; search defined fns
   "M-I" #'consult-eglot-symbols   ; search project symbols
@@ -203,7 +208,8 @@ From a popup, the popup closes and this acts on the main frame."
   "C-<left>"  (univ/outside-minibuffer (univ/resize-window -4 0))
   "C-<up>"    (univ/outside-minibuffer (univ/resize-window 0 2))
   "C-<down>"  (univ/outside-minibuffer (univ/resize-window 0 -2))
-  "C-x"   #'pop/close-or-delete-window
+  ;; (not in the minibuffer, where there's no window of its own to close)
+  "C-x"   (univ/outside-minibuffer #'pop/close-or-delete-window)
   ;; In treemacs, C-<return> opens the file at point in a split instead
   "C-<return>" `(menu-item "" univ/spawn-window
                            :filter ,(lambda (cmd)

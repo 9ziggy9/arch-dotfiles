@@ -17,7 +17,7 @@
                    langs        ; indentation, C, eglot, compiling
                    orgmode      ; org looks and keys
                    latexmode    ; LaTeX, snippets, live PDF preview
-                   git          ; magit, and GitHub through gh
+                   git          ; magit, and GitHub through forge and gh
                    popup        ; the popup framework
                    universal    ; keys that override everything
                    modeline))   ; the mode line, with F-key slots

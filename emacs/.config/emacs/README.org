@@ -3,7 +3,7 @@
 | C-h/j/k/l        | move left / down / up / right                 |
 | C-S-h/j/k/l      | swap with the window left / down / up / right |
 | C-RET            | split right, same buffer in both              |
-| C-x              | close window                                  |
+| C-x              | close window (not in a prompt)                |
 | C-f              | fullscreen on / off                           |
 | C-]              | side by side <-> stacked                      |
 | C-<left>/<right> | narrower / wider                              |
@@ -58,7 +58,29 @@ pull requests and issues show in the status buffer.
 Making a GitHub repo from this one: M-x my/gh-repo-create (runs gh, so
 =gh auth login= once).
 
+* Code
+** Documentation
+| ?             | (normal state) docs for the function or variable under the cursor, in a popup |
+| esc / q       | close it                                                                      |
+| RET (in help) | follow a link to another function's help                                      |
+In C the docs come from clangd and can take a moment; in Emacs Lisp it's
+the full help page (helpful).  Outside code, ? is still search backward.
+Help opened any other way (C-h f, C-h v, C-h k) shows in the popup too.
+** Looks
+Keywords and types are bold, functions italic (where they're defined and
+where they're called), macros plain even when they look like a function
+call (in C, that takes clangd).  Colors are the color scheme's.
+** Indentation
+Every language indents by 2 columns, with spaces; =<= and =>= shift by 2.
+Python doesn't guess a file's indentation from what's in it.  Re-indenting
+Python keeps indentation that's already valid, so a 4-space file stays as
+it is.
+
 * C
+clangd (through eglot) gives completion, jump to definition (=gd=), the
+docs on =?= and its highlighting.  No error checking (flymake), and no hints
+for its fixes and refactorings; =M-x eglot-code-actions= lists those.
+
 Macro bodies are highlighted like any other code.  In a macro, RET (and
 o / O) continues it: the new line gets a backslash lined up with the one
 above, and backslashes stay lined up as you type.  RET on the last line

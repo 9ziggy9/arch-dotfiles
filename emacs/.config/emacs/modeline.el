@@ -14,6 +14,7 @@
 (require 'cl-lib)
 (require 'popup (locate-user-emacs-file "popup"))
 (require 'universal (locate-user-emacs-file "universal"))
+(require 'ui (locate-user-emacs-file "ui"))  ; my/scheme-color, my/mix, my/readable
 
 ;;;; Slots
 
@@ -66,12 +67,10 @@ Its SLOTS replace `ml/default-slots', e.g.
 ;; its second-darkest shade (base01) instead.
 (defun ml/base16-mode-line (&optional theme)
   "Readable mode-line colors when THEME is a base16 scheme."
-  (let* ((var (and theme (intern-soft (format "%s-theme-colors" theme))))
-         (colors (and var (boundp var) (symbol-value var))))
-    (when (and colors (string-prefix-p "base16-" (symbol-name theme)))
-      (set-face-attribute 'mode-line nil
-                          :background (plist-get colors :base01)
-                          :foreground (plist-get colors :base05)))))
+  (when (and theme (string-prefix-p "base16-" (symbol-name theme)))
+    (when-let* ((bg (my/scheme-color :base01 theme))
+                (fg (my/scheme-color :base05 theme)))
+      (set-face-attribute 'mode-line nil :background bg :foreground fg))))
 
 (dolist (theme custom-enabled-themes)
   (ml/base16-mode-line theme))
@@ -79,9 +78,10 @@ Its SLOTS replace `ml/default-slots', e.g.
 (add-hook 'enable-theme-functions #'ml/base16-mode-line -50)
 
 ;; Segments, like the i3 status bar: they alternate between the bar's own
-;; colors and a lighter shade (30% of the way to the text color, with
-;; brighter text).  Colors come from the theme's mode line, so they follow
-;; every theme.
+;; colors and a lighter shade with brighter text.  Under tinty's scheme the
+;; shade is the bar's own second one (base02, with base06 text), a pairing
+;; apply-scheme made readable; under any other theme it's 30% of the way
+;; to the text color, worked out from the theme's mode line.
 (defface ml/seg-a '((t)) "Segment in the bar's own colors.")
 (defface ml/seg-b '((t)) "Segment in the lighter shade.")
 
@@ -92,15 +92,19 @@ Its SLOTS replace `ml/default-slots', e.g.
         (fg (face-foreground 'mode-line nil 'default)))
     (when (and bg fg (color-defined-p bg) (color-defined-p fg))
       (set-face-attribute 'ml/seg-a nil :background bg :foreground (my/readable fg bg))
-      (let ((shade (my/mix bg fg 0.3)))
-        (set-face-attribute 'ml/seg-b nil
-                            :background shade
-                            ;; always readable, whatever the shade (ui.el)
-                            :foreground (my/readable
-                                         (my/mix fg (if (color-dark-p (color-name-to-rgb bg))
-                                                        "#ffffff" "#000000")
-                                                 0.5)
-                                         shade))))))
+      (if (my/scheme-text-on :base02)   ; tinty's scheme
+          (set-face-attribute 'ml/seg-b nil
+                              :background (my/scheme-color :base02)
+                              :foreground (my/scheme-color :base06))
+        (let ((shade (my/mix bg fg 0.3)))
+          (set-face-attribute 'ml/seg-b nil
+                              :background shade
+                              ;; always readable, whatever the shade (ui.el)
+                              :foreground (my/readable
+                                           (my/mix fg (if (color-dark-p (color-name-to-rgb bg))
+                                                          "#ffffff" "#000000")
+                                                   0.5)
+                                           shade)))))))
 
 (ml/update-segment-faces)
 (add-hook 'enable-theme-functions #'ml/update-segment-faces)
@@ -271,6 +275,19 @@ the message first and drops everything else when both don't fit."
 (defvar ml/bar-buffers
   (mapcar #'get-buffer-create '(" *Echo Area 0*" " *Echo Area 1*" " *Minibuf-0*"))
   "The buffers the bottom line shows when there's no prompt.")
+
+;; A prompt (and vertico's list under it) runs edge to edge too: each one
+;; has a buffer of its own, which would otherwise bring back the frame's
+;; fringes, a strip of background either side of every row
+(defun ml/prompt-edge-to-edge ()
+  "No fringes or margins around the prompt's window."
+  (setq-local left-fringe-width 0 right-fringe-width 0
+              left-margin-width 0 right-margin-width 0)
+  (when-let* ((win (active-minibuffer-window)))
+    (set-window-fringes win 0 0)
+    (set-window-margins win 0 0)))
+
+(add-hook 'minibuffer-setup-hook #'ml/prompt-edge-to-edge)
 
 (use-package mini-echo
   :custom

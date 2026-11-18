@@ -1,6 +1,7 @@
 ;;; langs.el --- programming: indentation, C, eglot, compiling -*- lexical-binding: t -*-
 
 (require 'popup (locate-user-emacs-file "popup"))
+(require 'cl-lib)
 
 ;; Mode-specific popups go here, each with its mode's slots, which
 ;; replace the defaults (see `ml/mode-slots' in modeline.el):
@@ -9,11 +10,62 @@
 ;;     (add-to-list 'ml/mode-slots
 ;;                  '(c-ts-mode ("compile" . pop/compile-toggle) ...)))
 
-;; Indentation
-(setq-default indent-tabs-mode nil
-              tab-width 2
-              c-basic-offset 2
-              standard-indent 2)
+;;; Indentation: 2 columns, spaces, in every language
+
+(defvar my/indent-width 2
+  "Columns per indentation step, in every language.")
+
+;; Each language has its own setting for its basic step.  These are set
+;; before the modes load, so their defaults don't apply.  Only the basic
+;; step: settings that are multiples or extras of it (Fortran continuation
+;; lines, extra offsets for brackets in JS...) keep their defaults.
+(defvar my/indent-variables
+  '(standard-indent tab-width evil-shift-width ; < and >, evil's
+    c-basic-offset c-ts-mode-indent-offset   ; C, C++, Java (cc-mode)
+    python-indent-offset
+    js-indent-level typescript-ts-mode-indent-offset json-ts-mode-indent-offset
+    css-indent-offset sgml-basic-offset html-ts-mode-indent-offset
+    nxml-child-indent
+    sh-basic-offset smie-indent-basic       ; shells, and SMIE modes
+    rust-ts-mode-indent-offset go-ts-mode-indent-offset
+    java-ts-mode-indent-offset csharp-ts-mode-indent-offset
+    lua-ts-mode-indent-offset php-ts-mode-indent-offset
+    cmake-ts-mode-indent-offset toml-ts-mode-indent-offset
+    elixir-ts-mode-indent-offset heex-ts-mode-indent-offset
+    ruby-indent-level perl-indent-level cperl-indent-level
+    tex-indent-basic
+    pascal-indent-level verilog-indent-level vhdl-basic-offset)
+  "Every language's setting for its basic indentation step.")
+
+(setq-default indent-tabs-mode nil)
+(dolist (var my/indent-variables)
+  (set-default var my/indent-width))
+
+;; Python measures the indentation of each file it opens and uses that
+;; instead; no guessing
+(setq python-indent-guess-indent-offset nil)
+
+;; For any other language, and modes that set a width of their own when
+;; they start (Python sets tab-width to 8, for instance): once a mode is
+;; on, its own "<lang>-indent-offset" and the like are made 2 as well
+(defun my/indent-width-here ()
+  "Make this buffer's indentation step `my/indent-width', whatever its mode."
+  (let* ((mode (symbol-name major-mode))
+         (langs (delete-dups
+                 (list (string-remove-suffix "-mode" mode)
+                       (string-remove-suffix "-ts-mode" mode)))))
+    (dolist (var (append
+                  ;; c-basic-offset: cc-mode's styles (java's...) set their own
+                  '(tab-width evil-shift-width standard-indent c-basic-offset)
+                  (cl-loop for lang in langs
+                           append (cl-loop for suffix in '("-indent-offset" "-mode-indent-offset"
+                                                           "-basic-offset" "-indent-level")
+                                           for var = (intern-soft (concat lang suffix))
+                                           when var collect var))))
+      (when (and (boundp var) (integerp (symbol-value var)))
+        (set (make-local-variable var) my/indent-width)))))
+
+(add-hook 'after-change-major-mode-hook #'my/indent-width-here)
 
 ;; Fill column: in code, the part of a line past it is drawn in red
 (setq-default fill-column 80)
@@ -25,8 +77,10 @@
   (whitespace-style '(face lines-tail))
   (whitespace-line-column nil)          ; nil means use `fill-column'
   :custom-face
-  (whitespace-line ((t (:foreground "#ff5f5f" :background unspecified
-                        :weight unspecified)))))
+  (whitespace-line ((t (:background unspecified :weight unspecified))))
+  :config
+  ;; its red reads on the scheme's background (ui.el)
+  (when (fboundp 'my/scheme-faces) (my/scheme-faces)))
 
 ;;; C
 (use-package c-ts-mode
@@ -47,7 +101,15 @@
          ("RET"   . my/c-macro-newline))
   :hook
   (c-ts-mode . electric-pair-local-mode)
-  (c-ts-mode . my/c-macro-highlighting))
+  (c-ts-mode . my/c-macro-highlighting)
+  (c-ts-mode . my/c-highlight-calls))
+
+;; Function calls are highlighted too (italic, like definitions: ui.el).
+;; Tree-sitter only does that at its top level of detail, which also
+;; colors every variable, operator and bracket; this adds just the calls.
+(defun my/c-highlight-calls ()
+  "Highlight function calls, on top of the usual level of detail."
+  (treesit-font-lock-recompute-features '(function)))
 
 ;;; Macros
 
@@ -265,21 +327,99 @@ followed by a backslash."
   (eldoc-echo-area-use-multiline-p nil)  ; one line, like other messages
   (eldoc-echo-area-prefer-doc-buffer t)) ; if *eldoc* is open, show docs there instead
 
+;; clangd's docs, signatures, highlighting of the symbol under the cursor
+;; and code-action hints all come through eldoc.  Its docs go to the
+;; *eldoc* buffer (M-x eldoc-doc-buffer), not the echo area, which is the
+;; bar (modeline.el).
+(defun my/eglot-docs-in-buffer ()
+  "Show eldoc's docs in its buffer only, in buffers eglot manages."
+  (if (eglot-managed-p)
+      (setq-local eldoc-display-functions '(eldoc-display-in-buffer))
+    (kill-local-variable 'eldoc-display-functions)))
+
 (use-package eglot
   :ensure nil
-  :hook (c-ts-mode . eglot-ensure)     ; start clangd in every C buffer
+  :hook
+  (c-ts-mode . eglot-ensure)           ; start clangd in every C buffer
+  (eglot-managed-mode . my/eglot-docs-in-buffer)
   :init
-  (setq eglot-stay-out-of '(eldoc))    ; keep eglot out of the echo area
+  ;; No error checking (flymake).  A plain variable, not an option, so set
+  ;; here: :custom would be too early for it, before eglot is loaded
+  (setq eglot-stay-out-of '(flymake))
   :custom
   (eglot-ignored-server-capabilities '(:inlayHintProvider)) ; no inline hints
   (eglot-autoshutdown t)               ; stop it when the last C buffer closes
   (eglot-extend-to-xref t)             ; headers you jump into reuse that clangd
+  ;; No hints that clangd has a fix or refactoring for the code at point
+  ;; (M-x eglot-code-actions still lists them)
+  (eglot-code-action-indications nil)
   :config
   ;; clangd marks inactive #ifdef branches (e.g. an stb-style
   ;; #ifdef FOO_IMPLEMENTATION block) as "comment" tokens, greying them out;
   ;; tree-sitter already highlights real comments
   (setq eglot-semantic-token-types
-        (delete "comment" eglot-semantic-token-types)))
+        (delete "comment" eglot-semantic-token-types))
+  ;; clangd tags symbols as declared, defined, modified, static... and
+  ;; eglot paints most of those tags with the function or keyword faces,
+  ;; over the symbol's own: every declared variable came out like a
+  ;; function (italic) and static ones like keywords (bold), and macro
+  ;; definitions kept the function look.  Keep the tags that say something
+  ;; of their own.
+  (setq eglot-semantic-token-modifiers
+        '("readonly" "deprecated" "documentation" "defaultLibrary")))
+
+;;; Documentation at point
+
+;; ? in normal state, in code, shows the documentation of the function
+;; (or whatever) under the cursor in a popup; escape (or q) closes it.  In
+;; Emacs Lisp that's helpful's page for it; elsewhere it's what eldoc has,
+;; e.g. clangd's docs in C, which can take a moment to arrive.  Outside
+;; code, ? is still evil's search backward.  Help opened any other way
+;; (C-h f...) shows in the popup too.
+
+(defvar my/doc-requested nil
+  "Non-nil while docs asked for with ? are on their way, to take focus.")
+
+(defun my/doc-at-point ()
+  "Show the documentation for the thing at point in a popup."
+  (interactive)
+  (if (derived-mode-p 'emacs-lisp-mode 'lisp-interaction-mode)
+      (helpful-at-point)
+    (setq my/doc-requested t)
+    ;; asks every doc source and shows the *eldoc* buffer once they answer
+    (eldoc t)))
+
+(defun my/doc-take-focus ()
+  "Focus the popup that docs just entered, once it's showing."
+  (run-at-time 0 nil (lambda () (when (pop/visible-p) (pop/focus)))))
+
+(pop/define doc
+  :match   (string-match-p "\\`\\*eldoc" (buffer-name))
+  :capture t
+  :setup   (progn (pop/text-scale 0.8)
+                  ;; eldoc rewrites this buffer as you move around; only
+                  ;; take focus when the docs were asked for
+                  (when my/doc-requested
+                    (setq my/doc-requested nil)
+                    (my/doc-take-focus)))
+  :keys    ("q" pop/hide))
+
+;; helpful just shows its pages (the popup takes focus itself, below);
+;; letting it select the popup's window as well left the popup's keys off
+(setq helpful-switch-buffer-function #'display-buffer)
+
+(pop/define help
+  :match   (derived-mode-p 'helpful-mode)
+  :capture t
+  :setup   (progn (pop/text-scale 0.8)
+                  (my/doc-take-focus))
+  :keys    ("q" pop/hide)
+  :hints   ("RET" "follow link"  "q" "close"  "?" "keys"))
+
+(with-eval-after-load 'evil
+  (evil-define-key 'normal 'global
+    "?" `(menu-item "" my/doc-at-point
+                    :filter ,(lambda (cmd) (when (derived-mode-p 'prog-mode) cmd)))))
 
 ;;; Compilation
 

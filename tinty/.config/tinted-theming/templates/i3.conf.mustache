@@ -2,6 +2,9 @@
 # Included by ~/.config/i3/config. The bar block lives here too, since i3
 # doesn't pass variables from an included file back to the main config.
 
+# Window titles, in the font picked with font-select (the bar's is below)
+font pango:{{font-family}} 8
+
 # Window colors:          border      background  text        indicator   child_border
 client.focused            #{{base0A-hex}}     #{{base0A-hex}}     #{{on-base0A-hex}}     #{{base0A-hex}}     #{{base0A-hex}}
 client.focused_inactive   #{{base02-hex}}     #{{base02-hex}}     #{{base05-hex}}     #{{base02-hex}}     #{{base02-hex}}
@@ -12,7 +15,7 @@ client.background         #{{base00-hex}}
 bar {
         position top
         status_command ~/.config/bumblebee-status/launch.sh
-        font pango:FiraCode Nerd Font 9
+        font pango:{{font-family}} 9
         # the focused workspace number is drawn by the status line instead
         workspace_buttons no
 

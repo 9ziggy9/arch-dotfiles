@@ -34,7 +34,6 @@ import cairo  # noqa: E402
 from gi.repository import Pango, PangoCairo  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-FONT = "FiraCode Nerd Font 9"  # must match the bar font in the i3 config
 FRAME_PX = 1
 # Pixels to leave unused, measured from a screenshot so the workspace square
 # touches the left edge of the screen (i3bar draws the frame inside the blocks,
@@ -44,11 +43,16 @@ SLACK_PX = int(os.environ.get("STATUSLINE_SLACK", "-1"))
 shares = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}
 
 colors = {"bg": "#282828", "fg": "#ebdbb2", "good": "#98971a", "bad": "#cc241d"}
+# the bar's font, the same as i3's bar block (both written by apply-scheme,
+# with the font picked with font-select)
+FONT = "MesloLGS Nerd Font Mono 9"
 try:
     with open(os.path.join(HERE, "themes", "base16-powerline.json")) as f:
         theme = json.load(f)
     colors.update(theme["cycle"][0])
-    colors.update(theme.get("statusline", {}))
+    statusline = dict(theme.get("statusline", {}))
+    FONT = statusline.pop("font", FONT)
+    colors.update(statusline)
 except (OSError, ValueError, KeyError, IndexError):
     pass
 frame = os.environ.get("STATUSLINE_FRAME") or colors["fg"]

@@ -21,6 +21,10 @@ def scheme_colors(path=os.path.expanduser("~/.config/qutebrowser/scheme")):
                 m = re.match(r"\s*((?:on-)?base0[0-9A-F])\s+(#[0-9a-fA-F]{6})\s*$", line)
                 if m:
                     colors[m.group(1)] = m.group(2)
+                # and the font picked with font-select
+                m = re.match(r"\s*font\s+(\S.*?)\s*$", line)
+                if m:
+                    colors["font"] = m.group(1)
     except OSError:
         pass
     return colors
@@ -161,10 +165,11 @@ config.set("content.headers.user_agent",
 
 
 # ------------------------------------------------------------------ fonts
-# kitty's font for the whole interface (tabs, URL bar, command line, lists).
+# The font picked with font-select ($mod+Shift+f), kitty's too, for the
+# whole interface (tabs, URL bar, command line, lists).
 # 9pt rather than kitty's 10pt keeps the tab bar and the bottom bar thin (16px).
 # Web pages still use their own fonts.
-c.fonts.default_family = "MesloLGS Nerd Font Mono"
+c.fonts.default_family = s.get("font", "MesloLGS Nerd Font Mono")
 c.fonts.default_size = "9pt"
 c.statusbar.padding = {"top": 0, "bottom": 0, "left": 0, "right": 0}  # with the tabs, 16px tall
 

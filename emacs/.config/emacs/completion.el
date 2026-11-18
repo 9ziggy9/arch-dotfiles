@@ -8,6 +8,26 @@
          ("C-j" . vertico-next)
          ("C-k" . vertico-previous)))
 
+;; Rows like rofi's: every other one on a shade of its own, and the
+;; selected one in the scheme's yellow (colors set with the other faces,
+;; in ui.el).  Stripes are counted from the top of the list, so they stay
+;; put as it scrolls.
+(defface my/vertico-stripe '((t :extend t))
+  "Background of every other row in vertico's list.")
+
+(defun my/vertico-stripe (format cand prefix suffix index start)
+  "Vertico's row for CAND, striped if it's an odd row from the top."
+  (let ((row (funcall format cand prefix suffix index start)))
+    (if (= index vertico--index)
+        ;; the selected row's colors over everything on it, matches
+        ;; included, so its text always reads on the yellow
+        (add-face-text-property 0 (length row) 'vertico-current nil row)
+      (when (= 1 (% (- index start) 2))
+        (add-face-text-property 0 (length row) 'my/vertico-stripe 'append row)))
+    row))
+
+(advice-add 'vertico--format-candidate :around #'my/vertico-stripe)
+
 (use-package orderless            ; fzf-like matching
   :custom
   (completion-styles '(orderless basic))
@@ -23,37 +43,11 @@
 (use-package marginalia           ; a description beside each candidate
   :init (marginalia-mode 1))
 
-;;; M-x: a centered box, bordered like the popups, at 75% text.  M-x
-;;; lists only commands that make sense in the current buffer (commands
-;;; written for other modes are left out); M-X narrows that further, to
-;;; commands for the buffer's own modes.  marginalia shows each command's
-;;; key beside it.
+;;; M-x lists only commands that make sense in the current buffer
+;;; (commands written for other modes are left out); M-X narrows that
+;;; further, to commands for the buffer's own modes.  marginalia shows
+;;; each command's key beside it.
 (setq read-extended-command-predicate #'command-completion-default-include-p)
-
-(use-package vertico-posframe
-  :custom
-  (vertico-posframe-border-width 3)
-  :custom-face
-  (vertico-posframe-border ((t (:background "#cc7833"))))) ; popup orange
-
-(use-package vertico-multiform    ; per-command looks, part of vertico
-  :ensure nil
-  :after vertico
-  :custom
-  (vertico-multiform-commands
-   (let ((box '(posframe (vertico-count . 16) (vertico-posframe-min-height . 16))))
-     `((execute-extended-command ,@box)
-       (execute-extended-command-for-buffer ,@box))))
-  :config
-  (vertico-multiform-mode 1))
-
-(defun my/mx-text-size ()
-  "M-x's text at 75%."
-  (when (memq current-minibuffer-command
-              '(execute-extended-command execute-extended-command-for-buffer))
-    (face-remap-add-relative 'default :height 0.75)))
-
-(add-hook 'minibuffer-setup-hook #'my/mx-text-size)
 
 ;;; Autocompletion: a popup of candidates as you type (its text size is
 ;;; set with the other faces, in ui.el)
@@ -61,7 +55,7 @@
   :init (global-corfu-mode 1)
   :custom
   (corfu-auto t)             ; show candidates automatically while typing
-  (corfu-auto-prefix 2)      ; ...after 3 characters
+  (corfu-auto-prefix 2)      ; ...after 2 characters
   (corfu-auto-delay 0.4)     ; ...and a short pause
   (corfu-cycle t))           ; wrap around at the ends of the list
 
