@@ -1,0 +1,117 @@
+#+title: dotfiles
+
+My desktop on Arch Linux: X11 with the i3 window manager, kitty as the
+terminal, Emacs as the editor and qutebrowser as the browser. Everything
+is themed together.
+
+* The idea
+
+** Keyboard first, few moving parts
+i3 tiles the windows, and rofi is the one menu for everything: launching
+programs, picking a color scheme or a font, and looking up key bindings.
+A dropdown terminal is always a key away. The bar is bumblebee-status,
+redrawn by a small script so it fits the rest of the desktop. Every
+program is set up to be driven from the keyboard.
+
+** One look, everywhere
+There's one color scheme and one monospace font for the whole system.
+Switching either one changes kitty, the shell prompt, i3 and its bar,
+rofi, qutebrowser and Emacs together, and each program reloads by
+itself. Nothing needs restarting.
+
+- =theme-select= picks any base16/base24 scheme. [[https://github.com/tinted-theming/tinty][tinty]] keeps track of
+  the schemes and which one is in use.
+- =font-select= picks any installed monospace font. Each program keeps
+  its own font size.
+
+Each program's colors come from a template in
+=tinty/.config/tinted-theming/templates/=. When a scheme is applied,
+=apply-scheme= fills in the templates and reloads the programs. First it
+checks the scheme for readability (WCAG contrast ratios) and makes small
+lightness adjustments where text wouldn't read. Hue is never changed, so
+even a loosely made scheme stays legible, and well-made schemes are left
+exactly as they are.
+
+** Emacs as the workbench
+The Emacs config (=emacs/.config/emacs/=) is split by topic: completion,
+editing (evil, vim-style), git (magit and forge), C (clangd through
+eglot, with tree-sitter), Org, and LaTeX with a live PDF preview. It
+runs as a daemon started by i3, so new windows open instantly. Its own
+[[file:emacs/.config/emacs/README.org][README]] covers how to use it.
+
+** Extras
+- An Onyx Boox e-ink tablet works as a second screen. =boox-screen=
+  mirrors it with scrcpy over USB or Wi-Fi, and picom inverts the colors
+  to match the dark panel.
+- Kitty's scrollback opens in Neovim, so it can be searched and copied
+  like a file.
+
+* Layout
+Each top-level directory is a [[https://www.gnu.org/software/stow/][GNU Stow]] package and mirrors where its
+files go in =~=:
+
+| Directory     | What's in it                                                        |
+|---------------+---------------------------------------------------------------------|
+| =x11=         | =.xinitrc=: starts i3                                               |
+| =i3=          | the window manager, and the keyboard remap (=xmodmap=)              |
+| =bumblebee=   | the status bar, and the script that lays it out                     |
+| =kitty=       | the terminal, its kittens, and the Neovim scrollback pager          |
+| =zsh=         | shell and the powerlevel10k prompt                                  |
+| =rofi=        | the menu's layout                                                   |
+| =picom=       | the compositor                                                      |
+| =qutebrowser= | the browser                                                         |
+| =emacs=       | the editor                                                          |
+| =tinty=       | the color scheme and font pipeline: tinty's config, =apply-scheme=, the templates |
+| =bin=         | scripts in =~/.local/bin=: =theme-select=, =font-select=, =i3-keys=, =boox-screen=, ... |
+
+Stow runs with =--no-folding= (see =.stowrc=), so it links individual
+files and never whole directories. Directories like =~/.config/kitty=
+stay real, and the files written at runtime (each program's current
+theme, Emacs's packages and caches) land there instead of in the repo.
+=.gitignore= is a backup in case one ever ends up in the repo anyway.
+
+* Installation
+Start from an Arch Linux install with a user that can use =sudo=.
+
+1. Clone the repo into your home directory:
+   #+begin_src sh
+   git clone <this repo> ~/dotfiles
+   cd ~/dotfiles
+   #+end_src
+
+2. Run the bootstrap script:
+   #+begin_src sh
+   ./bootstrap.sh
+   #+end_src
+   It updates the system, then:
+   - installs the packages from the official repos (pacman)
+   - installs =paru= if needed, and the AUR packages: =bumblebee-status=,
+     =tdrop= and =zsh-theme-powerlevel10k=
+   - sets up Rust and runs =cargo install tinty=
+   - stows every package into =~=
+
+   It's safe to run again: anything already installed is skipped. If a
+   file in =~= is in the way of a link, stowing stops before changing
+   anything and lists the conflicts. Move those files aside and run it
+   again. To install the packages without stowing, use
+   =./bootstrap.sh --no-stow=.
+
+3. Finish up by hand. The script prints these steps at the end:
+   - make zsh your shell: =chsh -s /usr/bin/zsh=
+   - enable NetworkManager if you use it:
+     =sudo systemctl enable --now NetworkManager=
+   - for GitHub from Emacs: =gh auth login=, and a token in =~/.authinfo=
+     for forge
+
+4. Log in and run =startx=. On the first start, i3 applies the default
+   color scheme (Solarized Dark), and every program gets its theme.
+   Emacs downloads its packages the first time it runs. The first time
+   it opens a PDF, it offers to build pdf-tools' helper: accept.
+
+** Notes
+- This setup is X11 only: i3, picom, xmodmap and tdrop don't run on
+  Wayland.
+- The Insert key is remapped to a modifier (Hyper) for kitty shortcuts.
+  =i3/.config/i3/insert-hyper.xmodmap= explains why and how to undo it.
+- =kitty.conf= points at the scrollback pager through an absolute path
+  in my home directory. Change it if your username is different.
