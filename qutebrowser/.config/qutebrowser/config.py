@@ -248,6 +248,10 @@ config.bind("<Alt-x>", "cmd-set-text :")
 # like rofi. Ctrl+k replaces readline's kill-to-end-of-line there.
 config.bind("<Ctrl-j>", "completion-item-focus next", mode="command")
 config.bind("<Ctrl-k>", "completion-item-focus prev", mode="command")                    # like M-x: every command, searchable
+# The palette's list takes at most a quarter of the window (qutebrowser's
+# default is half), and shrinks further when there are fewer matches.
+c.completion.height = "25%"
+c.completion.shrink = True
 
 # Link hints: Alt+Space (or f) numbers every link and button on the page; type
 # a number to click it, or type part of a link's text to narrow them down
