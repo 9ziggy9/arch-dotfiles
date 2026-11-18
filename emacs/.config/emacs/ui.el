@@ -131,11 +131,17 @@ out again in its next window (`my/recolor-new-frame')."
 ;; switch to it, and new ones open in it
 (defun my/tinty-font ()
   "Use the font family in tinty's theme file, if it's new."
-  (when-let* ((family (bound-and-true-p base16-tinty-font))
-              (font (format "%s-%s" family (bound-and-true-p my/font-size)))
-              ((not (equal font (alist-get 'font default-frame-alist)))))
-    (setf (alist-get 'font default-frame-alist) font)
-    (set-frame-font font nil t t)))
+  (when-let* ((family (bound-and-true-p base16-tinty-font)))
+    ;; what emacs draws "in a monospace font" too (key hints like M-x's,
+    ;; code in help and org), which otherwise is a generic one
+    (dolist (face '(fixed-pitch fixed-pitch-serif))
+      (set-face-attribute face nil :family family))
+    (let ((font (format "%s-%s" family (bound-and-true-p my/font-size))))
+      (unless (equal font (alist-get 'font default-frame-alist))
+        (setf (alist-get 'font default-frame-alist) font)
+        (set-frame-font font nil t t)))))
+
+(my/tinty-font)
 
 ;; Every emacs (the daemon, or one started on its own) watches the theme
 ;; file, so a scheme picked with theme-select shows at once, everywhere
