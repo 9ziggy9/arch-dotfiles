@@ -33,6 +33,93 @@ lightness adjustments where text wouldn't read. Hue is never changed, so
 even a loosely made scheme stays legible, and well-made schemes are left
 exactly as they are.
 
+** Restyling websites (and Discord)
+The scheme also goes into a few websites in qutebrowser, and into
+Discord. None of these sites support outside themes, so each one is
+restyled by overriding its own CSS from outside. There's one template
+per site in =tinty/.config/tinted-theming/templates/=, and each site
+gets whichever approach suits how it's built:
+
+| Site      | Template            | How it's restyled                                                         |
+|-----------+---------------------+---------------------------------------------------------------------------|
+| claude.ai | =claude.css=        | a qutebrowser user stylesheet that overrides its design-system variables (=--cds-gray-*= and the role scales), plus the fixed colors of its newer look |
+| Wikipedia | =wikipedia.user.js= | a greasemonkey script that sets Codex's design-token variables and switches the page to night mode |
+| x.com     | =x.user.js=         | a greasemonkey script that matches X's generated class names (=.r-kemksi=) and inline styles, since X has no color variables |
+| YouTube   | =youtube.user.js=   | a greasemonkey script: a stylesheet for the variables with readable names, and then =recolor.js= for the rest |
+| GitHub    | =github.user.js=    | a greasemonkey script that uses =recolor.js= on Primer's "Dark default" theme variables |
+| Discord   | =discord.css=       | a Vesktop theme that overrides Discord's color variables. =vesktop/.../quickCss.css= flattens the layout |
+
+=recolor.js= is shared by YouTube and GitHub. Those sites have too many
+color variables to list by hand (GitHub has about a thousand, and most of
+YouTube's have scrambled names), so the script reads the site's own
+dark-theme variables from its stylesheets while the page loads, whatever
+they're called. It maps each gray to a scheme shade by lightness and each
+color to the accent nearest in hue.
+
+=apply-scheme= writes the stylesheet and scripts, runs
+=:config-source= and =:greasemonkey-reload= in qutebrowser, and then
+reloads every open tab (=reload-tabs.py=), since the styles only apply
+when a page loads. Each themed page sets =color-scheme: dark=, which tells
+qutebrowser's built-in darkmode to leave it alone. Every other site still
+gets the generic darkmode.
+
+Some site settings have to stay a certain way, because only the site's
+dark theme is themed:
+- claude.ai: set the appearance to Dark.
+- x.com: set the display to "Lights out".
+- YouTube: set the appearance to Dark, or to "Use device theme".
+- GitHub: keep the dark theme on "Dark default".
+- Wikipedia: the script picks dark mode itself, overriding Appearance.
+
+*** Warning: this will break
+All of this depends on the sites' internal CSS: variable names, class
+names, which attribute marks the dark theme, and what their stylesheets
+look like. None of that is a public interface. The sites change it
+without notice, sometimes several times a month, and *a site update can
+undo some or all of the theming at any time*. Nothing here notices when
+that happens. There's no error. Part of the page just goes back to the
+site's own colors, or, worse, gets the scheme's background without the
+matching text color, and becomes hard to read.
+
+How likely each one is to break, roughly from most to least likely:
+- x.com: its class names are generated and get renamed with new
+  releases. The names come from [[https://github.com/catppuccin/userstyles][Catppuccin's userstyles]], which are
+  kept up to date and are the first place to look for new ones.
+- Discord: its variable names changed completely in the 2025 redesign,
+  and the hashed class suffixes (=sidebar_pog62O=) change with updates.
+  =quickCss.css= only matches the stable start of a class name for this
+  reason, but a redesign will still break it.
+- claude.ai: its design system is under active development. The newer
+  look already replaced many variables with fixed values, and more may
+  follow.
+- YouTube: most of its variables have scrambled names that can change with
+  every release. =recolor.js= doesn't depend on those names, but it does
+  depend on the =html[dark]= attribute and on the stylesheets being
+  readable, and the named variables and classes in the template can
+  still change.
+- GitHub: Primer is versioned and fairly stable, but the match relies on
+  the =data-dark-theme="dark"= selector and on GitHub's grays staying
+  near the lightness values in the template's ramp.
+- Wikipedia: Codex tokens are documented and change slowly, but
+  =skin-theme-clientpref-night= and the article template colors are
+  not guaranteed either.
+
+When a site looks wrong after an update:
+1. Open the page's inspector (=:devtools= in qutebrowser) and find the
+   element that has the wrong color.
+2. Find the variable or class that colors it now, and add it to that
+   site's template next to the old one. Keep the old one in case the
+   change is rolled back.
+3. Run =theme-select= again (or reapply the current scheme) to write the
+   files out and reload the tabs.
+
+If a site can't be fixed quickly, remove its line from =APPS= in
+=apply-scheme= and delete the file it wrote. For claude.ai, that's
+=~/.config/qutebrowser/claude.css=; for the others, it's the matching
+=base16-*.user.js= in =~/.local/share/qutebrowser/greasemonkey/=. That
+site goes back to qutebrowser's generic darkmode. For Discord, untick
+=base16-tinty.css= in Vesktop's Themes settings.
+
 ** Emacs as the workbench
 The Emacs config (=emacs/.config/emacs/=) is split by topic: completion,
 editing (evil, vim-style), git (magit and forge), C (clangd through
