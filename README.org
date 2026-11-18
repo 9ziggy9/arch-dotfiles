@@ -73,40 +73,43 @@ theme, Emacs's packages and caches) land there instead of in the repo.
 * Installation
 Start from an Arch Linux install with a user that can use =sudo=.
 
-1. Clone the repo into your home directory:
-   #+begin_src sh
-   git clone <this repo> ~/dotfiles
-   cd ~/dotfiles
-   #+end_src
+** 1. Clone the repo
+Clone it into your home directory:
+#+begin_src sh
+git clone https://github.com/9ziggy9/arch-dotfiles.git ~/dotfiles
+cd ~/dotfiles
+#+end_src
 
-2. Run the bootstrap script:
-   #+begin_src sh
-   ./bootstrap.sh
-   #+end_src
-   It updates the system, then:
-   - installs the packages from the official repos (pacman)
-   - installs =paru= if needed, and the AUR packages: =bumblebee-status=,
-     =tdrop= and =zsh-theme-powerlevel10k=
-   - sets up Rust and runs =cargo install tinty=
-   - stows every package into =~=
+** 2. Run the bootstrap script
+#+begin_src sh
+./bootstrap.sh
+#+end_src
+It updates the system, then:
+- installs the packages from the official repos (pacman)
+- installs =paru= if needed, and the AUR packages: =bumblebee-status=,
+  =tdrop= and =zsh-theme-powerlevel10k=
+- sets up Rust and runs =cargo install tinty=
+- stows every package into =~=
 
-   It's safe to run again: anything already installed is skipped. If a
-   file in =~= is in the way of a link, stowing stops before changing
-   anything and lists the conflicts. Move those files aside and run it
-   again. To install the packages without stowing, use
-   =./bootstrap.sh --no-stow=.
+It's safe to run again: anything already installed is skipped. If a
+file in =~= is in the way of a link, stowing stops before changing
+anything and lists the conflicts. Move those files aside and run it
+again. To install the packages without stowing, use
+=./bootstrap.sh --no-stow=.
 
-3. Finish up by hand. The script prints these steps at the end:
-   - make zsh your shell: =chsh -s /usr/bin/zsh=
-   - enable NetworkManager if you use it:
-     =sudo systemctl enable --now NetworkManager=
-   - for GitHub from Emacs: =gh auth login=, and a token in =~/.authinfo=
-     for forge
+** 3. Finish up by hand
+The script prints these steps at the end:
+- make zsh your shell: =chsh -s /usr/bin/zsh=
+- enable NetworkManager if you use it:
+  =sudo systemctl enable --now NetworkManager=
+- for GitHub from Emacs: =gh auth login=, and a token in =~/.authinfo=
+  for forge
 
-4. Log in and run =startx=. On the first start, i3 applies the default
-   color scheme (Solarized Dark), and every program gets its theme.
-   Emacs downloads its packages the first time it runs. The first time
-   it opens a PDF, it offers to build pdf-tools' helper: accept.
+** 4. Start the desktop
+Log in and run =startx=. On the first start, i3 applies the default
+color scheme (Solarized Dark), and every program gets its theme.
+Emacs downloads its packages the first time it runs. The first time
+it opens a PDF, it offers to build pdf-tools' helper: accept.
 
 ** Notes
 - This setup is X11 only: i3, picom, xmodmap and tdrop don't run on
