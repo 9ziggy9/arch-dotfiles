@@ -17,7 +17,7 @@ program is set up to be driven from the keyboard.
 There's one color scheme and one monospace font for the whole system.
 Switching either one changes kitty, the shell prompt, i3 and its bar,
 rofi, qutebrowser (and claude.ai, x.com, Wikipedia, YouTube and GitHub in it),
-Emacs and Discord (Vesktop) together, and each program reloads by
+Emacs, Discord (Vesktop) and the lock screen together, and each program reloads by
 itself. Nothing needs restarting.
 
 - =theme-select= picks any base16/base24 scheme. [[https://github.com/tinted-theming/tinty][tinty]] keeps track of
@@ -128,6 +128,9 @@ runs as a daemon started by i3, so new windows open instantly. Its own
 [[file:emacs/.config/emacs/README.org][README]] covers how to use it.
 
 ** Extras
+- =$mod+Escape= locks the screen. =blur-lock= shows =i3lock-color= over a
+  pixelated screenshot, with a small, thin ring in the scheme's colors.
+  It runs through =xss-lock=, so locking before suspend looks the same.
 - An Onyx Boox e-ink tablet works as a second screen. =boox-screen=
   mirrors it with scrcpy over USB or Wi-Fi, and picom inverts the colors
   to match the dark panel.
@@ -151,7 +154,7 @@ files go in =~=:
 | =vesktop=     | Discord: its launcher (named Discord in rofi) and the QuickCSS that flattens it |
 | =emacs=       | the editor                                                          |
 | =tinty=       | the color scheme and font pipeline: tinty's config, =apply-scheme=, the templates |
-| =bin=         | scripts in =~/.local/bin=: =theme-select=, =font-select=, =i3-keys=, =boox-screen=, ... |
+| =bin=         | scripts in =~/.local/bin=: =theme-select=, =font-select=, =i3-keys=, =boox-screen=, =blur-lock=, ... |
 
 Stow runs with =--no-folding= (see =.stowrc=), so it links individual
 files and never whole directories. Directories like =~/.config/kitty=
@@ -176,7 +179,8 @@ cd ~/dotfiles
 It updates the system, then:
 - installs the packages from the official repos (pacman)
 - installs =paru= if needed, and the AUR packages: =bumblebee-status=,
-  =tdrop= and =zsh-theme-powerlevel10k=
+  =tdrop=, =zsh-theme-powerlevel10k=, =vesktop-bin= and =i3lock-color=
+  (paru asks to remove =i3lock= if it's installed: say yes)
 - sets up Rust and runs =cargo install tinty=
 - stows every package into =~=
 

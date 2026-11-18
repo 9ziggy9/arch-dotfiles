@@ -105,6 +105,8 @@ APPS = [
     ("emacs.el", "~/.config/emacs/themes/base16-tinty-theme.el", None),
     ("discord.css", "~/.config/vesktop/themes/base16-tinty.css", None),
     ("bumblebee.json", "~/.config/bumblebee-status/themes/base16-powerline.json", None),
+    # blur-lock reads it on every lock
+    ("i3lock.args", "~/.config/blur-lock/colors", None),
     ("i3.conf", "~/.config/i3/theme.conf", ["i3-msg", "-q", "restart"]),
 ]
 

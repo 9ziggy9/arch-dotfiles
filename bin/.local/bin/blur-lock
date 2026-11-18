@@ -1,0 +1,56 @@
+#!/bin/bash
+# blur-lock: lock the screen with i3lock over a pixelated screenshot.
+#
+# xss-lock runs this (see the i3 config), so $mod+Escape, `loginctl
+# lock-session` and suspend all lock the same way. Any arguments are
+# passed on to i3lock.
+#
+# The screenshot is shrunk and scaled back up without smoothing, so each
+# block is one solid colour; BLOCK is the block size in pixels. If the
+# screenshot fails for any reason it falls back to a plain dark lock.
+#
+# With i3lock-color installed (it replaces i3lock) the ring is drawn
+# smaller and thinner, without the text inside it, which wouldn't fit;
+# its colour still shows typing, verifying and wrong password. Plain
+# i3lock doesn't know these options, so they're only added for i3lock-color.
+# Its colors come from the theme picked with theme-select: apply-scheme
+# writes them to ~/.config/blur-lock/colors (i3lock-color's own defaults
+# until a theme has been picked).
+#
+# i3lock forks once the screen is locked, holding the image in memory, so
+# the screenshot is deleted straight away. xss-lock --transfer-sleep-lock
+# hands over a suspend-delay lock as fd $XSS_SLEEP_LOCK_FD; closing it
+# after i3lock is up lets the suspend go ahead (this is xss-lock's own
+# documented pattern).
+
+BLOCK=20
+img="${XDG_RUNTIME_DIR:-/tmp}/blur-lock.png"
+trap 'rm -f "$img"' EXIT
+
+if maim --hidecursor "$img" 2>/dev/null; then
+    read -r w h < <(magick identify -format '%w %h' "$img")
+    magick "$img" -scale "$(( (w + BLOCK - 1) / BLOCK ))x$(( (h + BLOCK - 1) / BLOCK ))!" \
+        -scale "${w}x${h}!" "$img"
+    set -- -i "$img" "$@"
+else
+    set -- -c 1d2021 "$@"
+fi
+
+if i3lock --version 2>&1 | grep -q '\.c\.'; then
+    set -- --radius 40 --ring-width 3 \
+        --verif-text= --wrong-text= --noinput-text= \
+        --lock-text= --lockfailed-text= "$@"
+    colors="${XDG_CONFIG_HOME:-$HOME/.config}/blur-lock/colors"
+    if [ -r "$colors" ]; then
+        mapfile -t opts < <(grep -v '^[[:space:]]*\(#\|$\)' "$colors")
+        set -- "${opts[@]}" "$@"
+    fi
+fi
+
+if [ -n "$XSS_SLEEP_LOCK_FD" ]; then
+    # keep the sleep lock out of i3lock, then release ours
+    i3lock "$@" {XSS_SLEEP_LOCK_FD}<&-
+    exec {XSS_SLEEP_LOCK_FD}<&-
+else
+    i3lock "$@"
+fi

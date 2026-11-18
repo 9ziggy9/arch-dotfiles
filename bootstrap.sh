@@ -24,8 +24,10 @@ command -v pacman >/dev/null || { echo "This is for Arch Linux (no pacman found)
 pacman_pkgs=(
     # X11 and i3
     xorg-server xorg-xinit xorg-xmodmap xorg-setxkbmap xorg-xprop
-    i3-wm i3lock xss-lock dex network-manager-applet
+    i3-wm xss-lock dex network-manager-applet
     picom rofi flameshot libnotify
+    # lock screen (blur-lock): the screenshot and its pixelation
+    maim imagemagick
     # audio: pactl for the volume keys
     pipewire-pulse libpulse
     # status bar: bumblebee-status modules and statusline.py
@@ -55,6 +57,7 @@ aur_pkgs=(
     tdrop                     # dropdown terminal ($mod+d)
     zsh-theme-powerlevel10k   # prompt, sourced from /usr/share by .zshrc
     vesktop-bin               # Discord, themed by apply-scheme
+    i3lock-color              # lock screen (blur-lock); replaces i3lock
 )
 
 step "Official packages"
