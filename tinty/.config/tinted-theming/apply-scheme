@@ -67,24 +67,25 @@ SHADES = [f"base0{i}" for i in range(8)]
 ACCENTS = [f"base0{c}" for c in "89ABCDEF"]
 
 
-def qutebrowser_command(command):
-    """Run COMMAND in a running qutebrowser only (it would otherwise start one)."""
+def qutebrowser_command(*commands):
+    """Run COMMANDS, in order, in a running qutebrowser only (it would
+    otherwise start one)."""
     running = subprocess.run(
         ["pgrep", "-f", "^(/usr/bin/)?python3? .*/usr/bin/qutebrowser"],
         stdout=subprocess.DEVNULL).returncode == 0
     if running:
-        subprocess.Popen(["qutebrowser", command], stdout=subprocess.DEVNULL,
+        subprocess.Popen(["qutebrowser", *commands], stdout=subprocess.DEVNULL,
                          stderr=subprocess.DEVNULL, start_new_session=True)
 
 
 def reload_qutebrowser():
-    qutebrowser_command(":config-source")
-
-
-def reload_greasemonkey():
-    """Reread the greasemonkey scripts (x.com's, Wikipedia's, YouTube's and
-    GitHub's); open tabs change on their next reload."""
-    qutebrowser_command(":greasemonkey-reload --quiet")
+    """Reread the config (colors, claude.css) and the greasemonkey scripts
+    (x.com's, Wikipedia's, YouTube's and GitHub's), then reload every open
+    tab so the pages show the new scheme now. One call, so they run in order."""
+    qutebrowser_command(
+        ":config-source",
+        ":greasemonkey-reload --quiet",
+        ":debug-pyeval --file " + os.path.join(HERE, "reload-tabs.py"))
 
 
 # (template, where it goes, how its program reloads), in this order: i3 is
@@ -94,12 +95,12 @@ def reload_greasemonkey():
 APPS = [
     ("kitty.conf", "~/.config/kitty/current-theme.conf", ["pkill", "-USR1", "-x", "kitty"]),
     ("rofi.rasi", "~/.config/rofi/colors.rasi", None),
-    ("claude.css", "~/.config/qutebrowser/claude.css", None),   # reloaded with the next
+    # claude.css and the site scripts are reloaded with qutebrowser's scheme
+    ("claude.css", "~/.config/qutebrowser/claude.css", None),
     ("x.user.js", "~/.local/share/qutebrowser/greasemonkey/base16-x.user.js", None),
     ("wikipedia.user.js", "~/.local/share/qutebrowser/greasemonkey/base16-wikipedia.user.js", None),
     ("youtube.user.js", "~/.local/share/qutebrowser/greasemonkey/base16-youtube.user.js", None),
-    ("github.user.js", "~/.local/share/qutebrowser/greasemonkey/base16-github.user.js",
-     reload_greasemonkey),                                   # all four at once
+    ("github.user.js", "~/.local/share/qutebrowser/greasemonkey/base16-github.user.js", None),
     ("qutebrowser.txt", "~/.config/qutebrowser/scheme", reload_qutebrowser),
     ("emacs.el", "~/.config/emacs/themes/base16-tinty-theme.el", None),
     ("discord.css", "~/.config/vesktop/themes/base16-tinty.css", None),
