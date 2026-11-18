@@ -1,0 +1,173 @@
+/**
+ * @name base16-tinty
+ * @description {{scheme-name}} (written by apply-scheme for tinty; edits are overwritten).
+ * @author dotfiles
+ */
+
+/* Discord's own color variables (its 2025 redesign; when Discord renames
+   them, look up the new names in its stylesheets and update this). Set on
+   every theme class with !important, so these win whichever Discord theme
+   (dark, light, darker, midnight) is picked in its settings. */
+:root, .theme-dark, .theme-light, .theme-darker, .theme-midnight {
+    /* backgrounds: the chat and server list on base00, the side panels on
+       base01, popouts and modals above them */
+    --background-base-lowest: #{{base00-hex}} !important;
+    --background-base-lower: #{{base00-hex}} !important;
+    --background-base-low: #{{base01-hex}} !important;
+    --chat-background-default: #{{base00-hex}} !important;
+    --background-surface-high: #{{base01-hex}} !important;
+    --background-surface-higher: #{{base01-hex}} !important;
+    --background-surface-highest: #{{base02-hex}} !important;
+    --modal-background: #{{base01-hex}} !important;
+    --modal-footer-background: #{{base01-hex}} !important;
+    --card-background-default: #{{base01-hex}} !important;
+    --user-profile-overlay-background: #{{base02-hex}} !important;
+    --user-profile-toolbar-background: #{{base02-hex}} !important;
+    --background-accent: #{{base02-hex}} !important;
+    --background-code: #{{base01-hex}} !important;
+
+    /* hover and selection washes: the text color, faint */
+    --background-mod-muted: #{{base05-hex}}14 !important;
+    --background-mod-subtle: #{{base05-hex}}1f !important;
+    --background-mod-normal: #{{base05-hex}}29 !important;
+    --background-mod-strong: #{{base05-hex}}33 !important;
+    --interactive-background-hover: #{{base05-hex}}1f !important;
+    --interactive-background-active: #{{base05-hex}}29 !important;
+    --interactive-background-selected: #{{base05-hex}}33 !important;
+    --message-background-hover: #{{base05-hex}}0f !important;
+
+    /* borders */
+    --border-muted: #{{base02-hex}}80 !important;
+    --border-subtle: #{{base02-hex}} !important;
+    --border-normal: #{{base02-hex}} !important;
+    --border-strong: #{{base03-hex}} !important;
+    --border-focus: #{{base0D-hex}} !important;
+
+    /* text */
+    --text-default: #{{base05-hex}} !important;
+    --text-strong: #{{base06-hex}} !important;
+    --text-muted: #{{base04-hex}} !important;
+    --text-subtle: #{{base04-hex}} !important;
+    --chat-text-muted: #{{base04-hex}} !important;
+    --text-link: #{{text-base0D-hex}} !important;
+    --text-brand: #{{text-base0D-hex}} !important;
+    --text-feedback-critical: #{{text-base08-hex}} !important;
+    --text-feedback-positive: #{{text-base0B-hex}} !important;
+    --text-feedback-warning: #{{text-base0A-hex}} !important;
+    --text-feedback-info: #{{text-base0D-hex}} !important;
+    --channels-default: #{{base04-hex}} !important;
+    --channel-icon: #{{base04-hex}} !important;
+
+    /* channels, buttons and icons that light up on hover */
+    --interactive-text-default: #{{base04-hex}} !important;
+    --interactive-text-hover: #{{base06-hex}} !important;
+    --interactive-text-active: #{{base06-hex}} !important;
+    --interactive-icon-default: #{{base04-hex}} !important;
+    --interactive-icon-hover: #{{base06-hex}} !important;
+    --interactive-icon-active: #{{base06-hex}} !important;
+    --icon-default: #{{base05-hex}} !important;
+    --icon-strong: #{{base06-hex}} !important;
+    --icon-muted: #{{base04-hex}} !important;
+    --icon-subtle: #{{base04-hex}} !important;
+    --icon-feedback-critical: #{{text-base08-hex}} !important;
+    --icon-feedback-positive: #{{text-base0B-hex}} !important;
+    --icon-feedback-warning: #{{text-base0A-hex}} !important;
+    --icon-feedback-info: #{{text-base0D-hex}} !important;
+
+    /* inputs */
+    --input-background-default: #{{base01-hex}} !important;
+    --input-border-default: #{{base02-hex}} !important;
+    --input-border-hover: #{{base03-hex}} !important;
+    --input-border-active: #{{base0D-hex}} !important;
+    --input-border-error-default: #{{base08-hex}} !important;
+    --input-text-default: #{{base05-hex}} !important;
+    --input-placeholder-text-default: #{{base04-hex}} !important;
+
+    /* the brand color (Discord's blurple) becomes the scheme's blue */
+    --brand-360: #{{base0D-hex}} !important;
+    --brand-500: #{{base0D-hex}} !important;
+    --brand-560: #{{base0D-hex}} !important;
+    --background-brand: #{{base0D-hex}} !important;
+    --control-brand-foreground: #{{text-base0D-hex}} !important;
+    --control-brand-foreground-new: #{{text-base0D-hex}} !important;
+    --mention-background: #{{base0D-hex}}3d !important;
+    --mention-foreground: #{{text-base0D-hex}} !important;
+
+    /* buttons: primary (blue), secondary (faint), critical (red), connected (green) */
+    --control-primary-background-default: #{{base0D-hex}} !important;
+    --control-primary-background-hover: #{{base0D-hex}} !important;
+    --control-primary-background-active: #{{base0D-hex}} !important;
+    --control-primary-text-default: #{{on-base0D-hex}} !important;
+    --control-primary-text-hover: #{{on-base0D-hex}} !important;
+    --control-primary-text-active: #{{on-base0D-hex}} !important;
+    --control-secondary-background-default: #{{base02-hex}} !important;
+    --control-secondary-background-hover: #{{base03-hex}} !important;
+    --control-secondary-background-active: #{{base03-hex}} !important;
+    --control-secondary-text-default: #{{base06-hex}} !important;
+    --control-secondary-text-hover: #{{base06-hex}} !important;
+    --control-secondary-text-active: #{{base06-hex}} !important;
+    --control-critical-primary-background-default: #{{base08-hex}} !important;
+    --control-critical-primary-background-hover: #{{base08-hex}} !important;
+    --control-critical-primary-background-active: #{{base08-hex}} !important;
+    --control-critical-primary-text-default: #{{on-base08-hex}} !important;
+    --control-critical-primary-text-hover: #{{on-base08-hex}} !important;
+    --control-critical-primary-text-active: #{{on-base08-hex}} !important;
+    --control-critical-primary-icon-default: #{{on-base08-hex}} !important;
+    --control-critical-secondary-text-default: #{{text-base08-hex}} !important;
+    --control-critical-secondary-text-hover: #{{text-base08-hex}} !important;
+    --control-critical-secondary-text-active: #{{text-base08-hex}} !important;
+    --control-connected-background-default: #{{base0B-hex}} !important;
+    --control-connected-background-hover: #{{base0B-hex}} !important;
+    --control-connected-background-active: #{{base0B-hex}} !important;
+    --control-connected-text-default: #{{on-base0B-hex}} !important;
+    --control-connected-text-hover: #{{on-base0B-hex}} !important;
+    --control-connected-text-active: #{{on-base0B-hex}} !important;
+
+    /* status dots, badges and voice */
+    --status-positive: #{{base0B-hex}} !important;
+    --status-positive-background: #{{base0B-hex}} !important;
+    --status-positive-text: #{{on-base0B-hex}} !important;
+    --status-warning-background: #{{base0A-hex}} !important;
+    --status-warning-text: #{{on-base0A-hex}} !important;
+    --status-danger: #{{base08-hex}} !important;
+    --status-speaking: #{{base0B-hex}} !important;
+    --background-feedback-notification: #{{base08-hex}} !important;
+
+    /* scrollbars */
+    --scrollbar-thin-thumb: #{{base02-hex}} !important;
+    --scrollbar-auto-thumb: #{{base02-hex}} !important;
+    --scrollbar-auto-track: #{{base01-hex}} !important;
+    --scrollbar-auto-scrollbar-color-thumb: #{{base02-hex}} !important;
+    --scrollbar-auto-scrollbar-color-track: #{{base01-hex}} !important;
+
+    /* code blocks: the base16 syntax roles */
+    --text-code: #{{base05-hex}} !important;
+    --text-code-variable: #{{text-base08-hex}} !important;
+    --text-code-comment: #{{base03-hex}} !important;
+    --text-code-keyword: #{{text-base0E-hex}} !important;
+    --text-code-string: #{{text-base0B-hex}} !important;
+    --text-code-regexp: #{{text-base0C-hex}} !important;
+    --text-code-escape: #{{text-base0C-hex}} !important;
+    --text-code-number: #{{text-base09-hex}} !important;
+    --text-code-type: #{{text-base0A-hex}} !important;
+    --text-code-namespace: #{{text-base0A-hex}} !important;
+    --text-code-builtin: #{{text-base0C-hex}} !important;
+    --text-code-decorator: #{{text-base0A-hex}} !important;
+    --text-code-tag: #{{text-base08-hex}} !important;
+    --text-code-attribute: #{{text-base09-hex}} !important;
+    --text-code-property: #{{text-base0D-hex}} !important;
+    --text-code-operator: #{{base05-hex}} !important;
+    --text-code-title: #{{text-base0D-hex}} !important;
+    --text-code-section: #{{text-base0D-hex}} !important;
+    --text-code-bullet: #{{text-base08-hex}} !important;
+    --text-code-link: #{{text-base0D-hex}} !important;
+    --text-code-addition: #{{text-base0B-hex}} !important;
+    --text-code-deletion: #{{text-base08-hex}} !important;
+    --text-code-error: #{{text-base08-hex}} !important;
+
+    /* the font picked with font-select, for everything (it's a terminal) */
+    --font-primary: "{{font-family}}", monospace !important;
+    --font-display: "{{font-family}}", monospace !important;
+    --font-headline: "{{font-family}}", monospace !important;
+    --font-code: "{{font-family}}", monospace !important;
+}

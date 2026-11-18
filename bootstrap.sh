@@ -54,6 +54,7 @@ aur_pkgs=(
     bumblebee-status          # the bar
     tdrop                     # dropdown terminal ($mod+d)
     zsh-theme-powerlevel10k   # prompt, sourced from /usr/share by .zshrc
+    vesktop-bin               # Discord, themed by apply-scheme
 )
 
 step "Official packages"
@@ -115,4 +116,6 @@ cat <<'EOF'
     let pdf-tools build epdfinfo
   - forge: a GitHub token in ~/.authinfo; gh: gh auth login
   - Boox over Wi-Fi: plug it in, then boox-screen --wifi
+  - Vesktop (Discord), once: Settings > Themes, tick base16-tinty.css;
+    Settings > Plugins, turn on KeepCurrentChannel
 EOF

@@ -1,0 +1,64 @@
+/* Discord, simplified to look like a terminal: flat, no clutter, no ads.
+   Vencord's QuickCSS: Vesktop applies it live when this file changes, and
+   Settings > Vencord > Themes > Edit QuickCSS edits this same file.
+   Vencord watches the file itself, so an editor that saves by replacing
+   the file (write a new one, rename it over) reloads it once and then
+   not again until Vesktop restarts; saving in place keeps it live.
+   Colors and the font come from base16-tinty.css, which apply-scheme writes.
+
+   Discord's class names end in a hash that can change when it updates
+   (sidebar_pog62O), so rules match the stable start of the name
+   ([class^="sidebar_"]), a link's href or an aria-label instead. */
+
+/* ---------------------------------------------------------------- flat */
+
+*, *::before, *::after {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+/* --------------------------------------------------------------- clutter */
+
+/* Nitro, Shop and Quests above the direct messages */
+li[class*="channel_"]:has(a[href="/store"], a[href="/shop"], a[href="/quest-home"]) {
+    display: none !important;
+}
+
+/* the Quests page Discord opens on at startup: blank, if it gets there
+   (the KeepCurrentChannel plugin should open your last channel instead) */
+[class^="scroller_"]:has([class*="questTile_"], [class*="shelfCardQuest_"]) {
+    visibility: hidden !important;
+}
+
+/* the quest banner above your name and the mute/deafen/settings buttons */
+section[class^="panels_"] > div[class^="mask_"] {
+    display: none !important;
+}
+
+/* Discover in the server list */
+[class^="listItem_"]:has([aria-label="Discover"]) {
+    display: none !important;
+}
+
+/* the title bar at the top (back/forward, the channel's name, inbox, help):
+   its grid row is this variable's height, so that goes to 0 with it */
+:root {
+    --custom-app-top-bar-height: 0px !important;
+}
+[class^="base_"] > [class^="bar_"] {
+    display: none !important;
+}
+
+/* message box: the gift, sticker and apps buttons (emoji and GIFs stay) */
+button[aria-label="Send a gift"],
+button[aria-label="Open sticker picker"],
+[class*="channelAppLauncher_"] {
+    display: none !important;
+}
+
+/* decorations people buy: avatar frames and profile effects */
+[class*="avatarDecoration_"],
+[class*="profileEffects_"] {
+    display: none !important;
+}

@@ -146,6 +146,14 @@ c.colors.webpage.preferred_color_scheme = "dark"
 c.colors.webpage.darkmode.enabled = True
 c.colors.webpage.darkmode.policy.images = "smart"
 
+# claude.ai in the color scheme: a stylesheet apply-scheme writes, scoped to
+# claude.ai (templates/claude.css). Emptied first so that reloading this file
+# changes the setting, which is what makes open tabs pick up a new scheme.
+_claude_css = os.path.expanduser("~/.config/qutebrowser/claude.css")
+c.content.user_stylesheets = []
+if os.path.exists(_claude_css):
+    c.content.user_stylesheets = [_claude_css]
+
 
 # ------------------------------------------------------------------ search
 # Google for searches: what you type in the URL bar that isn't an address
@@ -246,3 +254,10 @@ c.hints.mode = "number"
 config.bind("<Alt-Space>", "hint")
 for n in range(1, 10):
     config.bind(f"<Alt-{n}>", f"tab-focus-or-open {n}")
+
+# Zoom like other browsers: Ctrl+= in, Ctrl+- out, Ctrl+0 back to the default.
+# Also while typing in a page (insert mode).
+for mode in ("normal", "insert"):
+    config.bind("<Ctrl-=>", "zoom-in", mode=mode)
+    config.bind("<Ctrl-->", "zoom-out", mode=mode)
+    config.bind("<Ctrl-0>", "zoom", mode=mode)

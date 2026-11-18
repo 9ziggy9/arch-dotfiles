@@ -9,9 +9,11 @@ tinty/.config/tinted-theming/font
 kitty/.config/kitty/current-theme.conf
 rofi/.config/rofi/colors.rasi
 qutebrowser/.config/qutebrowser/scheme
+qutebrowser/.config/qutebrowser/claude.css
 bumblebee/.config/bumblebee-status/themes/
 i3/.config/i3/theme.conf
 emacs/.config/emacs/themes/
+vesktop/.config/vesktop/themes/
 
 # Emacs packages, caches and session state
 emacs/.config/emacs/elpa/
@@ -26,6 +28,11 @@ emacs/.config/emacs/recentf
 emacs/.config/emacs/places.eld
 emacs/.config/emacs/projects.eld
 emacs/.config/emacs/test/
+
+# Vesktop's own settings and session (written while it runs)
+vesktop/.config/vesktop/settings.json
+vesktop/.config/vesktop/settings/settings.json
+vesktop/.config/vesktop/sessionData/
 
 # qutebrowser data (bookmarks are personal data, not config)
 qutebrowser/.config/qutebrowser/bookmarks/

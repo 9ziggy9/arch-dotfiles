@@ -79,12 +79,15 @@ def reload_qutebrowser():
 
 # (template, where it goes, how its program reloads), in this order: i3 is
 # last, since restarting it restarts the bar, which reads bumblebee's theme.
-# Emacs needs no reload command: every emacs watches its theme file (ui.el).
+# Emacs needs no reload command: every emacs watches its theme file (ui.el),
+# and neither does Discord: Vesktop watches its themes folder.
 APPS = [
     ("kitty.conf", "~/.config/kitty/current-theme.conf", ["pkill", "-USR1", "-x", "kitty"]),
     ("rofi.rasi", "~/.config/rofi/colors.rasi", None),
+    ("claude.css", "~/.config/qutebrowser/claude.css", None),   # reloaded with the next
     ("qutebrowser.txt", "~/.config/qutebrowser/scheme", reload_qutebrowser),
     ("emacs.el", "~/.config/emacs/themes/base16-tinty-theme.el", None),
+    ("discord.css", "~/.config/vesktop/themes/base16-tinty.css", None),
     ("bumblebee.json", "~/.config/bumblebee-status/themes/base16-powerline.json", None),
     ("i3.conf", "~/.config/i3/theme.conf", ["i3-msg", "-q", "restart"]),
 ]

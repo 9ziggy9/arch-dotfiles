@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Claude
+Comment=claude.ai in its own qutebrowser window, in the color scheme
+Exec=qutebrowser --target window https://claude.ai/new
+Icon=qutebrowser
+Categories=Network;Chat;
+Keywords=ai;chat;anthropic;

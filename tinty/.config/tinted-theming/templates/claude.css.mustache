@@ -1,0 +1,231 @@
+/* claude.ai colors: {{scheme-name}} (written by apply-scheme for tinty; edits are overwritten).
+   A qutebrowser user stylesheet (config.py). It applies to every page, so
+   every rule is scoped to claude.ai's own html[data-theme=claude].
+
+   claude.ai's design system ("cds") has a gray scale, --cds-gray-0
+   (lightest) to --cds-gray-900 (darkest), and a scale per role (accent,
+   danger, warning, success, pro); those become the scheme's below, the
+   darkest gray the background (base00), up to the lightest (base07). But
+   its newer look (html[data-cds-fizzy-lake~=color]) sets most colors as
+   fixed values instead, so the semantic ones (surfaces, text, borders,
+   fills) are set directly too, after the scales. Only dark mode is themed
+   (pick Dark in claude.ai's settings); light mode is left as it is. If
+   claude.ai renames these, look up the new names in its stylesheets. */
+
+html[data-theme=claude][data-mode=dark],
+html[data-theme=claude][data-mode=dark] .cds-root,
+html[data-theme=claude][data-mode=dark] .cds-dark-scope {
+    /* text: primary is gray-50, secondary gray-200, muted gray-400 */
+    --cds-gray-0: #{{base07-hex}} !important;
+    --cds-gray-10: #{{base06-hex}} !important;
+    --cds-gray-20: #{{base06-hex}} !important;
+    --cds-gray-30: #{{base06-hex}} !important;
+    --cds-gray-40: #{{base06-hex}} !important;
+    --cds-gray-50: #{{base05-hex}} !important;
+    --cds-gray-60: #{{base05-hex}} !important;
+    --cds-gray-70: #{{base05-hex}} !important;
+    --cds-gray-80: #{{base05-hex}} !important;
+    --cds-gray-90: #{{base05-hex}} !important;
+    --cds-gray-100: #{{base05-hex}} !important;
+    --cds-gray-150: color-mix(in srgb, #{{base05-hex}} 50%, #{{base04-hex}}) !important;
+    --cds-gray-200: color-mix(in srgb, #{{base05-hex}} 50%, #{{base04-hex}}) !important;
+    --cds-gray-250: color-mix(in srgb, #{{base05-hex}} 25%, #{{base04-hex}}) !important;
+    --cds-gray-300: #{{base04-hex}} !important;
+    --cds-gray-350: #{{base04-hex}} !important;
+    --cds-gray-400: #{{base04-hex}} !important;
+    --cds-gray-450: #{{base04-hex}} !important;
+    --cds-gray-500: #{{base03-hex}} !important;
+    --cds-gray-550: #{{base03-hex}} !important;
+    --cds-gray-600: #{{base03-hex}} !important;
+    --cds-gray-650: #{{base03-hex}} !important;
+    /* backgrounds: surface-0 is gray-900 (the page), surface-1 gray-850
+       (the chat), surface-2 gray-830, surface-3 gray-800 (raised) */
+    --cds-gray-700: #{{base02-hex}} !important;
+    --cds-gray-750: #{{base02-hex}} !important;
+    --cds-gray-800: #{{base02-hex}} !important;
+    --cds-gray-810: #{{base02-hex}} !important;
+    --cds-gray-820: color-mix(in srgb, #{{base02-hex}} 50%, #{{base01-hex}}) !important;
+    --cds-gray-830: #{{base01-hex}} !important;
+    --cds-gray-840: #{{base01-hex}} !important;
+    --cds-gray-850: #{{base00-hex}} !important;
+    --cds-gray-860: #{{base00-hex}} !important;
+    --cds-gray-870: #{{base00-hex}} !important;
+    --cds-gray-880: #{{base00-hex}} !important;
+    --cds-gray-890: #{{base00-hex}} !important;
+    --cds-gray-900: #{{base00-hex}} !important;
+
+    /* roles, in each scale: 50-400 as text, 450-700 as fills and borders,
+       800-850 as a tinted background; "fill" and "on" the button and its text */
+    --cds-role-accent-50: #{{text-base0D-hex}} !important;
+    --cds-role-accent-100: #{{text-base0D-hex}} !important;
+    --cds-role-accent-250: #{{text-base0D-hex}} !important;
+    --cds-role-accent-300: #{{text-base0D-hex}} !important;
+    --cds-role-accent-400: #{{text-base0D-hex}} !important;
+    --cds-role-accent-450: #{{base0D-hex}} !important;
+    --cds-role-accent-600: #{{base0D-hex}} !important;
+    --cds-role-accent-700: #{{base0D-hex}} !important;
+    --cds-role-accent-800: color-mix(in srgb, #{{base0D-hex}} 20%, #{{base00-hex}}) !important;
+    --cds-role-accent-850: color-mix(in srgb, #{{base0D-hex}} 12%, #{{base00-hex}}) !important;
+    --cds-role-accent-fill: #{{base0D-hex}} !important;
+    --cds-role-accent-on: #{{on-base0D-hex}} !important;
+
+    --cds-role-danger-100: #{{text-base08-hex}} !important;
+    --cds-role-danger-250: #{{text-base08-hex}} !important;
+    --cds-role-danger-300: #{{text-base08-hex}} !important;
+    --cds-role-danger-400: #{{text-base08-hex}} !important;
+    --cds-role-danger-450: #{{base08-hex}} !important;
+    --cds-role-danger-600: #{{base08-hex}} !important;
+    --cds-role-danger-700: #{{base08-hex}} !important;
+    --cds-role-danger-800: color-mix(in srgb, #{{base08-hex}} 20%, #{{base00-hex}}) !important;
+    --cds-role-danger-fill: #{{base08-hex}} !important;
+    --cds-role-danger-on: #{{on-base08-hex}} !important;
+
+    --cds-role-warning-100: #{{text-base0A-hex}} !important;
+    --cds-role-warning-200: #{{text-base0A-hex}} !important;
+    --cds-role-warning-250: #{{text-base0A-hex}} !important;
+    --cds-role-warning-300: #{{text-base0A-hex}} !important;
+    --cds-role-warning-600: #{{base0A-hex}} !important;
+    --cds-role-warning-700: #{{base0A-hex}} !important;
+    --cds-role-warning-800: color-mix(in srgb, #{{base0A-hex}} 20%, #{{base00-hex}}) !important;
+    --cds-role-warning-fill: #{{base0A-hex}} !important;
+    --cds-role-warning-on: #{{on-base0A-hex}} !important;
+
+    --cds-role-success-100: #{{text-base0B-hex}} !important;
+    --cds-role-success-250: #{{text-base0B-hex}} !important;
+    --cds-role-success-400: #{{text-base0B-hex}} !important;
+    --cds-role-success-450: #{{base0B-hex}} !important;
+    --cds-role-success-600: #{{base0B-hex}} !important;
+    --cds-role-success-700: #{{base0B-hex}} !important;
+    --cds-role-success-800: color-mix(in srgb, #{{base0B-hex}} 20%, #{{base00-hex}}) !important;
+    --cds-role-success-fill: #{{base0B-hex}} !important;
+    --cds-role-success-on: #{{on-base0B-hex}} !important;
+
+    --cds-role-pro-100: #{{text-base0E-hex}} !important;
+    --cds-role-pro-250: #{{text-base0E-hex}} !important;
+    --cds-role-pro-300: #{{text-base0E-hex}} !important;
+    --cds-role-pro-400: #{{text-base0E-hex}} !important;
+    --cds-role-pro-450: #{{base0E-hex}} !important;
+    --cds-role-pro-600: #{{base0E-hex}} !important;
+    --cds-role-pro-700: #{{base0E-hex}} !important;
+    --cds-role-pro-800: color-mix(in srgb, #{{base0E-hex}} 20%, #{{base00-hex}}) !important;
+    --cds-role-pro-fill: #{{base0E-hex}} !important;
+    --cds-role-pro-on: #{{on-base0E-hex}} !important;
+
+    /* Claude's orange (the logo, the send button) becomes the scheme's orange */
+    --cds-clay: #{{base09-hex}} !important;
+    --cds-clay-emphasized: #{{base09-hex}} !important;
+
+    /* ------------------------------------------- the semantic colors */
+
+    /* backgrounds: the page and chat on base00, the sidebar and panels on
+       base01, menus and raised things on base01/base02 */
+    --cds-surface-0: #{{base00-hex}} !important;
+    --cds-surface-1: #{{base00-hex}} !important;
+    --cds-surface-2: #{{base01-hex}} !important;
+    --cds-surface-3: #{{base02-hex}} !important;
+    --cds-surface-popover: #{{base01-hex}} !important;
+    --cds-surface-panel: #{{base01-hex}} !important;
+    --cds-fizzy-lake-color-sidebar: #{{base01-hex}} !important;
+
+    /* text */
+    --cds-text-primary: #{{base05-hex}} !important;
+    --cds-text-secondary: color-mix(in srgb, #{{base05-hex}} 50%, #{{base04-hex}}) !important;
+    --cds-text-stays-secondary: color-mix(in srgb, #{{base05-hex}} 50%, #{{base04-hex}}) !important;
+    --cds-fizzy-lake-color-secondary: color-mix(in srgb, #{{base05-hex}} 50%, #{{base04-hex}}) !important;
+    --cds-fizzy-lake-color-plain-secondary: color-mix(in srgb, #{{base05-hex}} 50%, #{{base04-hex}}) !important;
+    --cds-text-muted: #{{base04-hex}} !important;
+    --cds-text-button-disabled: #{{base03-hex}} !important;
+    --cds-text-button-icon-disabled: #{{base03-hex}} !important;
+    --cds-text-link-color: #{{text-base0D-hex}} !important;
+    --cds-text-accent: #{{text-base0D-hex}} !important;
+    --cds-text-danger: #{{text-base08-hex}} !important;
+    --cds-text-success: #{{text-base0B-hex}} !important;
+    --cds-text-warning: #{{text-base0A-hex}} !important;
+    --cds-text-pro: #{{text-base0E-hex}} !important;
+    --cds-text-tint-red: #{{text-base08-hex}} !important;
+    --cds-text-tint-orange: #{{text-base09-hex}} !important;
+    --cds-text-tint-yellow: #{{text-base0A-hex}} !important;
+    --cds-text-tint-green: #{{text-base0B-hex}} !important;
+    --cds-text-tint-aqua: #{{text-base0C-hex}} !important;
+    --cds-text-tint-blue: #{{text-base0D-hex}} !important;
+    --cds-text-tint-violet: #{{text-base0E-hex}} !important;
+    --cds-text-tint-magenta: #{{text-base0F-hex}} !important;
+
+    /* lines */
+    --cds-border: #{{base02-hex}} !important;
+    --cds-border-line: #{{base02-hex}} !important;
+    --cds-border-line-muted: #{{base01-hex}} !important;
+    --cds-composer-ring: #{{base02-hex}} !important;
+    --cds-banner-line: #{{base02-hex}} !important;
+    --cds-border-accent: color-mix(in srgb, #{{base0D-hex}} 40%, transparent) !important;
+    --cds-border-danger: color-mix(in srgb, #{{base08-hex}} 40%, transparent) !important;
+    --cds-border-success: color-mix(in srgb, #{{base0B-hex}} 40%, transparent) !important;
+    --cds-border-warning: color-mix(in srgb, #{{base0A-hex}} 40%, transparent) !important;
+    --cds-border-pro: color-mix(in srgb, #{{base0E-hex}} 40%, transparent) !important;
+
+    /* buttons: primary is the text color, the rest the scheme's accents,
+       each with the text that reads on it */
+    --cds-fill-primary: #{{base05-hex}} !important;
+    --cds-fill-primary-hover: #{{base06-hex}} !important;
+    --cds-on-primary: #{{on-base05-hex}} !important;
+    --cds-fill-accent: #{{base0D-hex}} !important;
+    --cds-fill-accent-hover: color-mix(in srgb, #{{base0D-hex}} 85%, #{{base05-hex}}) !important;
+    --cds-on-accent: #{{on-base0D-hex}} !important;
+    --cds-fill-danger: #{{base08-hex}} !important;
+    --cds-fill-danger-hover: color-mix(in srgb, #{{base08-hex}} 85%, #{{base05-hex}}) !important;
+    --cds-on-danger: #{{on-base08-hex}} !important;
+    --cds-fill-success: #{{base0B-hex}} !important;
+    --cds-fill-success-hover: color-mix(in srgb, #{{base0B-hex}} 85%, #{{base05-hex}}) !important;
+    --cds-on-success: #{{on-base0B-hex}} !important;
+    --cds-fill-warning: #{{base0A-hex}} !important;
+    --cds-fill-warning-hover: color-mix(in srgb, #{{base0A-hex}} 85%, #{{base05-hex}}) !important;
+    --cds-on-warning: #{{on-base0A-hex}} !important;
+    --cds-fill-pro: #{{base0E-hex}} !important;
+    --cds-fill-pro-hover: color-mix(in srgb, #{{base0E-hex}} 85%, #{{base05-hex}}) !important;
+    --cds-on-pro: #{{on-base0E-hex}} !important;
+
+    /* hover and selection washes, inputs and cards: the text color, faint */
+    --cds-fill-field: #{{base01-hex}} !important;
+    --cds-fill-secondary: color-mix(in srgb, #{{base05-hex}} 8%, transparent) !important;
+    --cds-fill-secondary-hover: color-mix(in srgb, #{{base05-hex}} 12%, transparent) !important;
+    --cds-fill-ghost-hover: color-mix(in srgb, #{{base05-hex}} 8%, transparent) !important;
+    --cds-fill-ghost-selected: color-mix(in srgb, #{{base05-hex}} 14%, transparent) !important;
+    --cds-fill-button-ghost-hover: color-mix(in srgb, #{{base05-hex}} 14%, transparent) !important;
+    --cds-fill-button-layer: color-mix(in srgb, #{{base05-hex}} 6%, transparent) !important;
+    --cds-fill-card: color-mix(in srgb, #{{base05-hex}} 4%, transparent) !important;
+    --cds-fill-card-hover: color-mix(in srgb, #{{base05-hex}} 7%, transparent) !important;
+    --cds-fill-disabled: color-mix(in srgb, #{{base05-hex}} 3%, transparent) !important;
+    --cds-bg-neutral-hover: color-mix(in srgb, #{{base05-hex}} 8%, transparent) !important;
+
+    /* tinted backgrounds (notices, highlights) */
+    --cds-bg-accent: color-mix(in srgb, #{{base0D-hex}} 15%, transparent) !important;
+    --cds-bg-accent-layer: color-mix(in srgb, #{{base0D-hex}} 8%, transparent) !important;
+    --cds-bg-danger: color-mix(in srgb, #{{base08-hex}} 15%, transparent) !important;
+    --cds-bg-danger-layer: color-mix(in srgb, #{{base08-hex}} 8%, transparent) !important;
+    --cds-bg-success: color-mix(in srgb, #{{base0B-hex}} 15%, transparent) !important;
+    --cds-bg-warning: color-mix(in srgb, #{{base0A-hex}} 15%, transparent) !important;
+    --cds-bg-pro: color-mix(in srgb, #{{base0E-hex}} 15%, transparent) !important;
+    --cds-bg-tint-red: color-mix(in srgb, #{{base08-hex}} 15%, transparent) !important;
+    --cds-bg-tint-orange: color-mix(in srgb, #{{base09-hex}} 15%, transparent) !important;
+    --cds-bg-tint-yellow: color-mix(in srgb, #{{base0A-hex}} 15%, transparent) !important;
+    --cds-bg-tint-green: color-mix(in srgb, #{{base0B-hex}} 15%, transparent) !important;
+    --cds-bg-tint-aqua: color-mix(in srgb, #{{base0C-hex}} 15%, transparent) !important;
+    --cds-bg-tint-blue: color-mix(in srgb, #{{base0D-hex}} 15%, transparent) !important;
+    --cds-bg-tint-violet: color-mix(in srgb, #{{base0E-hex}} 15%, transparent) !important;
+    --cds-bg-tint-magenta: color-mix(in srgb, #{{base0F-hex}} 15%, transparent) !important;
+    --cds-bg-tint-red-opaque: color-mix(in srgb, #{{base08-hex}} 15%, #{{base00-hex}}) !important;
+    --cds-bg-tint-orange-opaque: color-mix(in srgb, #{{base09-hex}} 15%, #{{base00-hex}}) !important;
+    --cds-bg-tint-yellow-opaque: color-mix(in srgb, #{{base0A-hex}} 15%, #{{base00-hex}}) !important;
+    --cds-bg-tint-green-opaque: color-mix(in srgb, #{{base0B-hex}} 15%, #{{base00-hex}}) !important;
+    --cds-bg-tint-aqua-opaque: color-mix(in srgb, #{{base0C-hex}} 15%, #{{base00-hex}}) !important;
+    --cds-bg-tint-blue-opaque: color-mix(in srgb, #{{base0D-hex}} 15%, #{{base00-hex}}) !important;
+    --cds-bg-tint-violet-opaque: color-mix(in srgb, #{{base0E-hex}} 15%, #{{base00-hex}}) !important;
+    --cds-bg-tint-magenta-opaque: color-mix(in srgb, #{{base0F-hex}} 15%, #{{base00-hex}}) !important;
+
+    /* tooltips */
+    --cds-role-tooltip-bg: #{{base02-hex}} !important;
+    --cds-role-tooltip-fg: #{{base06-hex}} !important;
+
+    /* the font picked with font-select, for code */
+    --cds-font-mono-override: "{{font-family}}", !important;
+}

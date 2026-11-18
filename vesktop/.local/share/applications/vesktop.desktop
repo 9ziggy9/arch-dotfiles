@@ -1,0 +1,14 @@
+# Vesktop's entry (/usr/share/applications/vesktop.desktop), named Discord
+# so rofi finds and shows it as that. Same file name, so this one wins.
+[Desktop Entry]
+Name=Discord
+Exec=/usr/bin/vesktop %U
+Terminal=false
+Type=Application
+Icon=vesktop
+StartupWMClass=vesktop
+GenericName=Internet Messenger
+Categories=Network;InstantMessaging;
+Keywords=vesktop;vencord;chat;
+Comment=Discord, through Vesktop (themed by apply-scheme)
+MimeType=x-scheme-handler/discord;
