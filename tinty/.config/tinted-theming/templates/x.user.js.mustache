@@ -1,0 +1,225 @@
+// ==UserScript==
+// @name         x.com in {{scheme-name}}
+// @description  x.com colors from the base16 scheme (written by apply-scheme for tinty; edits are overwritten)
+// @match        https://x.com/*
+// @match        https://*.x.com/*
+// @match        https://twitter.com/*
+// @run-at       document-start
+// ==/UserScript==
+
+/* A qutebrowser greasemonkey script, so it only runs on x.com; apply-scheme
+   runs :greasemonkey-reload, and open x.com tabs change on their next reload.
+
+   x.com (React Native Web) has no color variables: every color is a
+   generated class (.r-kemksi is the black background) or an inline style
+   (style="color: rgb(231, 233, 234)"). So the rules below are matched on
+   those, with the class names from Catppuccin's userstyle for X
+   (github.com/catppuccin/userstyles, styles/twitter, MIT), which keeps up
+   with them. When X renames a class, part of the page goes back to its own
+   colors: inspect it, find the new r-xxxx class and add it next to the old.
+
+   Only the "Lights out" display (Settings > Accessibility, display and
+   languages > Display) is matched: its black, its grays, its blue.
+   Everything is !important, since X's own classes are added after this. */
+
+(function () {
+  const css = `
+:root {
+  color-scheme: dark !important;   /* and so qutebrowser's darkmode leaves it alone */
+  --bg: #{{base00-hex}};
+  --bg-alt: #{{base01-hex}};
+  --surface: #{{base02-hex}};
+  --surface-hi: color-mix(in srgb, #{{base02-hex}} 50%, #{{base03-hex}});
+  --line: #{{base03-hex}};
+  --dim: #{{base04-hex}};
+  --fg: #{{base05-hex}};
+  --fg-hi: #{{base07-hex}};
+  --accent: #{{base0D-hex}};
+  --accent-text: #{{text-base0D-hex}};
+  --on-accent: #{{on-base0D-hex}};
+  --on-fg: #{{on-base05-hex}};
+  --red: #{{base08-hex}};
+  --red-text: #{{text-base08-hex}};
+  --on-red: #{{on-base08-hex}};
+  --orange: #{{text-base09-hex}};
+  --yellow: #{{base0A-hex}};
+  --yellow-text: #{{text-base0A-hex}};
+  --green: #{{base0B-hex}};
+  --green-text: #{{text-base0B-hex}};
+  --cyan: #{{base0C-hex}};
+  --purple: #{{text-base0E-hex}};
+  --pink: #{{text-base0F-hex}};
+}
+
+/* ---------------------------------------------------------- backgrounds */
+body, .PageContainer, #placeholder,
+[data-testid="primaryColumn"], .r-kemksi,
+[style*="background-color: rgb(0, 0, 0)"], [style*="background-color: #000"] {
+  background-color: var(--bg) !important;
+}
+body { color: var(--fg) !important; }
+.r-cqee49 { color: var(--bg) !important; }                       /* account switcher arrow */
+.r-5zmot { background-color: color-mix(in srgb, var(--bg) 75%, transparent) !important; }  /* top bar */
+.r-g2wdr4 { background-color: var(--bg-alt) !important; }        /* right column boxes */
+.r-14wv3jr { border-color: var(--bg-alt) !important; }
+.r-gu4em3, .r-1bnu78o, .r-z32n2g, .r-1m3jxhj { background-color: var(--surface) !important; }  /* search bar, chips */
+.r-1pr99xn, .r-1fkb3t2 { background-color: var(--surface-hi) !important; }  /* tooltips */
+.r-1cuuowz { background-color: color-mix(in srgb, var(--fg) 3%, transparent) !important; }
+[style*="background-color: rgba(15, 20, 25, 0.75)"] {
+  background-color: color-mix(in srgb, var(--bg) 75%, transparent) !important;
+}
+[style*="background-color: rgba(255, 255, 255, 0.25)"] {
+  background-color: color-mix(in srgb, var(--fg) 25%, transparent) !important;
+}
+[style*="https://abs.twimg.com/responsive-web/client-web/background-premiumplus-web"] {
+  background-image: none !important;
+  background-color: var(--surface) !important;
+}
+
+/* hover and pressed, on the background */
+.r-1hdo0pc, .r-pjtv4k, .r-l8tqsx { background-color: color-mix(in srgb, var(--fg) 10%, transparent) !important; }
+.r-11gmi9o { background-color: color-mix(in srgb, var(--fg) 20%, transparent) !important; }
+.r-1eltapf { background-color: color-mix(in srgb, var(--cyan) 10%, transparent) !important; }  /* new notifications */
+.r-11z020y { background-color: color-mix(in srgb, var(--accent) 12%, transparent) !important; }
+
+/* ---------------------------------------------------------- text */
+.r-1nao33i, .r-jwli3a,
+[style*="color: rgb(231, 233, 234)"]:not([style*="background-color: rgb(231, 233, 234)"]),
+[style*="color: rgb(239, 243, 244)"]:not([style*="background-color: rgb(239, 243, 244)"]),
+[style*="color: rgb(255, 255, 255)"]:not([style*="background-color: rgb(255, 255, 255)"]) {
+  color: var(--fg) !important;
+}
+.r-1bwzh9t, .r-qazpri,
+[style*="color: rgb(113, 118, 123)"]:not([style*="background-color: rgb(113, 118, 123)"]),
+[style*="color: rgb(182, 185, 188)"]:not([style*="background-color: rgb(182, 185, 188)"]) {
+  color: var(--dim) !important;                                   /* handles, times, counts */
+}
+input::placeholder,
+.draftjs-styles_0 .public-DraftEditorPlaceholder-root { color: var(--dim) !important; }
+#ScriptLoadFailure span { color: var(--fg) !important; }
+
+/* colored text */
+.r-1cvl2hr,
+[style*="color: rgb(29, 155, 240)"]:not([style*="background-color: rgb(29, 155, 240)"]) {
+  color: var(--accent-text) !important;                           /* links, mentions */
+}
+.r-o6sn0f,
+[style*="color: rgb(0, 186, 124)"]:not([style*="background-color: rgb(0, 186, 124)"]) {
+  color: var(--green-text) !important;                            /* reposts */
+}
+.r-vkub15, .r-9l7dzd,
+[style*="color: rgb(249, 24, 128)"]:not([style*="background-color: rgb(249, 24, 128)"]),
+[style*="color: rgb(244, 33, 46)"]:not([style*="background-color: rgb(244, 33, 46)"]) {
+  color: var(--red-text) !important;                              /* likes, unfollow */
+}
+[style*="color: rgb(250, 68, 152)"]:not([style*="background-color: rgb(250, 68, 152)"]) { color: var(--pink) !important; }
+[style*="color: rgb(255, 212, 0)"]:not([style*="background-color: rgb(255, 212, 0)"]) { color: var(--yellow-text) !important; }
+[style*="color: rgb(120, 86, 255)"]:not([style*="background-color: rgb(120, 86, 255)"]) { color: var(--purple) !important; }
+[style*="color: rgb(255, 122, 0)"]:not([style*="background-color: rgb(255, 122, 0)"]) { color: var(--orange) !important; }
+
+/* ---------------------------------------------------------- borders */
+.r-1kqtdi0, .r-1roi411,
+[style*="border-color: rgb(51, 54, 57)"] { border-color: var(--surface) !important; }
+.r-1igl3o0 { border-bottom-color: var(--surface) !important; }
+.r-2sztyj { border-top-color: var(--surface) !important; }
+.r-1aihyag { border-right-color: var(--surface) !important; }
+.r-1ccsd61, .r-xzxzvz,
+[style*="border-color: rgb(83, 100, 113)"] { border-color: var(--line) !important; }
+.r-1wyyjkm { border-left-color: var(--dim) !important; }          /* replying to a DM */
+.r-1xc7w19 { border-color: var(--bg) !important; }
+.r-11mg6pl { border-color: var(--bg) !important; }
+.r-1pbtemp { border-right-color: var(--accent) !important; }      /* open DM */
+.r-vhj8yc, .r-1blqq69,
+[style*="border-color: rgb(29, 155, 240)"] { border-color: var(--accent) !important; }
+.r-b5kvu3 { border-color: var(--red) !important; }
+[style*="border-color: rgb(103, 7, 15)"] { border-color: color-mix(in srgb, var(--red) 50%, transparent) !important; }
+.r-9cip40 { box-shadow: var(--accent) 0 0 0 1px !important; }
+.r-qo02w8, .r-15ce4ve { box-shadow: rgba(0, 0, 0, 0.4) 0 0 15px, rgba(0, 0, 0, 0.35) 0 0 3px 1px !important; }  /* menus */
+[style*="scrollbar-color: rgb(62, 65, 68) rgb(22, 24, 28)"] {
+  scrollbar-color: var(--line) transparent !important;
+}
+
+/* ---------------------------------------------------------- buttons, colored backgrounds */
+.r-l5o3uw, .r-eff69c,
+[style*="background-color: rgb(29, 155, 240)"] { background-color: var(--accent) !important; }  /* Post, DM bubbles */
+.r-1vtznih { background-color: color-mix(in srgb, var(--accent) 85%, var(--bg)) !important; }
+.r-yuvema { background-color: color-mix(in srgb, var(--accent) 75%, var(--bg)) !important; }
+.r-1peqgm7, .r-rgqbpe { background-color: color-mix(in srgb, var(--accent) 10%, transparent) !important; }
+.r-r18ze4 { background-color: color-mix(in srgb, var(--accent) 20%, transparent) !important; }
+.r-eok2q2 { background-color: color-mix(in srgb, var(--accent) 60%, transparent) !important; }  /* polls */
+[style*="background-color: rgb(142, 205, 248)"] { background-color: color-mix(in srgb, var(--accent) 70%, var(--fg)) !important; }
+[style*="background-color: rgb(2, 17, 61)"] { background-color: color-mix(in srgb, var(--accent) 15%, transparent) !important; }
+
+/* the light "Follow" / "Subscribe" buttons */
+[style*="background-color: rgb(239, 243, 244)"] { background-color: var(--fg) !important; }
+.r-jc7xae { background-color: color-mix(in srgb, var(--fg) 90%, var(--bg)) !important; }
+.r-6wtuen { background-color: color-mix(in srgb, var(--fg) 80%, var(--bg)) !important; }
+[style*="background-color: rgb(239, 243, 244)"] [style*="color: rgb(15, 20, 25)"],
+[data-testid$="-follow"] [style*="color: rgb(15, 20, 25)"] { color: var(--on-fg) !important; }
+
+/* red: delete, block, live */
+.r-4nw3r4, .r-1dgebii,
+[style*="background-color: rgb(244, 33, 46)"] { background-color: var(--red) !important; }
+.r-12d83nn { background-color: color-mix(in srgb, var(--red) 85%, var(--bg)) !important; }
+.r-oybae9 { background-color: color-mix(in srgb, var(--red) 75%, var(--bg)) !important; }
+.r-qqmkd0, .r-1krxqcr, .r-1kwlb9n { background-color: color-mix(in srgb, var(--red) 10%, transparent) !important; }
+.r-uuique { background-color: color-mix(in srgb, var(--red) 20%, transparent) !important; }
+.r-15azkrj, .r-h7o7i8 { background-color: color-mix(in srgb, var(--green) 10%, transparent) !important; }
+.r-1x669os { background-color: color-mix(in srgb, var(--green) 20%, transparent) !important; }
+.r-s224ru { background-color: var(--green) !important; }
+.r-3gvs5h { background-color: var(--dim) !important; }
+
+/* toggles */
+[style*="background-color: rgb(147, 147, 147)"] { background-color: var(--line) !important; }
+
+/* text on the colored backgrounds above: after the text rules, so it wins */
+:is(.r-l5o3uw, .r-1vtznih, .r-yuvema, .r-eff69c, [style*="background-color: rgb(29, 155, 240)"])
+  :is(.r-jwli3a, [style*="color: rgb(255, 255, 255)"], [style*="color: rgb(231, 233, 234)"], [color="white"]),
+:is(.r-l5o3uw, .r-1vtznih, .r-yuvema, .r-eff69c, [style*="background-color: rgb(29, 155, 240)"])
+  :is([style*="color: rgb(255, 255, 255)"], [style*="color: rgb(231, 233, 234)"]) {
+  color: var(--on-accent) !important;
+}
+:is(.r-4nw3r4, .r-12d83nn, .r-oybae9, [style*="background-color: rgb(244, 33, 46)"])
+  :is(.r-jwli3a, [style*="color: rgb(255, 255, 255)"], [style*="color: rgb(231, 233, 234)"], [color="white"]) {
+  color: var(--on-red) !important;
+}
+/* but white stays white over videos and photos */
+:is([data-testid="videoComponent"], .r-loe9s5)
+  :is(.r-jwli3a, [style*="color: rgb(255, 255, 255)"]:not([style*="background-color: rgb(255, 255, 255)"])) {
+  color: #fff !important;
+}
+
+/* ---------------------------------------------------------- icons */
+[fill="rgb(249,22,127)"], [fill="rgb(222,45,108)"],
+[style="color: rgb(249, 24, 128);"] [viewBox="0 0 24 24"] path { fill: var(--red) !important; }
+[stroke="#2F3336" i] { stroke: var(--line) !important; }
+[stroke="#1D9BF0" i], [style*="stroke: rgb(29, 155, 240)"] { stroke: var(--accent) !important; }
+[stroke="#FFD400" i] { stroke: var(--yellow) !important; }
+[fill="#1DA1F2" i], [fill="#78C6EE" i] { fill: var(--cyan) !important; }
+[fill="#829AAB" i] { fill: var(--dim) !important; }
+[fill="#d18800" i] { fill: var(--yellow) !important; }
+[stop-color="#f4e72a" i], [stop-color="#cd8105" i], [stop-color="#cb7b00" i],
+[stop-color="#f4ec26" i], [stop-color="#f9e87f" i], [stop-color="#e2b719" i] {
+  stop-color: var(--yellow) !important;                           /* gold checkmarks */
+}
+[style*="linear-gradient(61.63deg, rgb(45, 66, 255) -15.05%, rgb(156, 99, 250) 104.96%)"] {
+  background-image: linear-gradient(61.63deg, var(--accent) -15%, var(--purple) 105%) !important;
+}
+`;
+  const style = document.createElement("style");
+  style.id = "base16-tinty";
+  style.textContent = css;
+  // qutebrowser runs document-start scripts before there's even an <html>,
+  // so wait for it (adding the style as early as possible: no flash of X's
+  // own colors). Into <html>, since <head> may not be there yet either.
+  if (document.documentElement) {
+    document.documentElement.appendChild(style);
+  } else {
+    new MutationObserver((_, observer) => {
+      if (document.documentElement) {
+        observer.disconnect();
+        document.documentElement.appendChild(style);
+      }
+    }).observe(document, { childList: true });
+  }
+})();

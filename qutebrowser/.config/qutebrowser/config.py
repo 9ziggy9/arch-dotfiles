@@ -262,3 +262,7 @@ for mode in ("normal", "insert"):
     config.bind("<Ctrl-=>", "zoom-in", mode=mode)
     config.bind("<Ctrl-->", "zoom-out", mode=mode)
     config.bind("<Ctrl-0>", "zoom", mode=mode)
+
+# Refresh like other browsers too: Ctrl+r, also while typing in a page.
+for mode in ("normal", "insert"):
+    config.bind("<Ctrl-r>", "reload", mode=mode)

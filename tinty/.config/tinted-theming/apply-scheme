@@ -66,15 +66,23 @@ SHADES = [f"base0{i}" for i in range(8)]
 ACCENTS = [f"base0{c}" for c in "89ABCDEF"]
 
 
-def reload_qutebrowser():
-    """Reload config.py in a running qutebrowser only (the command would
-    otherwise start one)."""
+def qutebrowser_command(command):
+    """Run COMMAND in a running qutebrowser only (it would otherwise start one)."""
     running = subprocess.run(
         ["pgrep", "-f", "^(/usr/bin/)?python3? .*/usr/bin/qutebrowser"],
         stdout=subprocess.DEVNULL).returncode == 0
     if running:
-        subprocess.Popen(["qutebrowser", ":config-source"], stdout=subprocess.DEVNULL,
+        subprocess.Popen(["qutebrowser", command], stdout=subprocess.DEVNULL,
                          stderr=subprocess.DEVNULL, start_new_session=True)
+
+
+def reload_qutebrowser():
+    qutebrowser_command(":config-source")
+
+
+def reload_greasemonkey():
+    """Reread the greasemonkey scripts (x.com's); open tabs change on reload."""
+    qutebrowser_command(":greasemonkey-reload --quiet")
 
 
 # (template, where it goes, how its program reloads), in this order: i3 is
@@ -85,6 +93,7 @@ APPS = [
     ("kitty.conf", "~/.config/kitty/current-theme.conf", ["pkill", "-USR1", "-x", "kitty"]),
     ("rofi.rasi", "~/.config/rofi/colors.rasi", None),
     ("claude.css", "~/.config/qutebrowser/claude.css", None),   # reloaded with the next
+    ("x.user.js", "~/.local/share/qutebrowser/greasemonkey/base16-x.user.js", reload_greasemonkey),
     ("qutebrowser.txt", "~/.config/qutebrowser/scheme", reload_qutebrowser),
     ("emacs.el", "~/.config/emacs/themes/base16-tinty-theme.el", None),
     ("discord.css", "~/.config/vesktop/themes/base16-tinty.css", None),

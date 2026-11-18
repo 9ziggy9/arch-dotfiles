@@ -16,7 +16,7 @@ program is set up to be driven from the keyboard.
 ** One look, everywhere
 There's one color scheme and one monospace font for the whole system.
 Switching either one changes kitty, the shell prompt, i3 and its bar,
-rofi, qutebrowser (and claude.ai in it), Emacs and Discord (Vesktop)
+rofi, qutebrowser (and claude.ai and x.com in it), Emacs and Discord (Vesktop)
 together, and each program reloads by itself. Nothing needs restarting.
 
 - =theme-select= picks any base16/base24 scheme. [[https://github.com/tinted-theming/tinty][tinty]] keeps track of
