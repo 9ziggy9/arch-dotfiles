@@ -159,9 +159,65 @@ if os.path.exists(_claude_css):
 # Google for searches: what you type in the URL bar that isn't an address
 c.url.searchengines = {"DEFAULT": "https://www.google.com/search?q={}"}
 
-# Google when qutebrowser starts and for new tabs opened without a URL
+# Google for new tabs opened without a URL, and when qutebrowser starts with
+# no previous session to restore (below)
 c.url.start_pages = ["https://www.google.com"]
 c.url.default_page = "https://www.google.com"
+
+# Reopen the previous session: the open windows and tabs are saved when
+# qutebrowser quits (however it is closed) and restored on the next start.
+c.auto_save.session = True
+
+# ...with each page's zoom and scroll position. qutebrowser saves both in the
+# session, but on its current Qt it restores only the URL (a workaround it
+# keeps for qutebrowser issue #5359). This wraps that restore to put the zoom
+# back and, once the page has loaded, scroll to where it was. Pages that
+# scroll inside their own panel (claude.ai's chat, for one) keep the page
+# itself at the top, so they open at the top. Uses qutebrowser internals; if
+# those change, tabs just come back unzoomed at the top, as before.
+# It wraps the session module's tab loading because qutebrowser discards any
+# module this file imports once the file has run (so patching a module first
+# imported here does nothing); the session module is already loaded by then.
+def _restore_zoom_and_scroll():
+    try:
+        from qutebrowser.misc import sessions
+        cls = sessions.SessionManager
+    except Exception:
+        return
+    original = cls._load_tab
+    if getattr(original, "_restores_view", False):
+        return  # already wrapped: reloading this file must not wrap it again
+
+    def load_tab(self, new_tab, data):
+        original(self, new_tab, data)
+        try:
+            entry = next(h for h in data["history"] if h.get("active"))
+            if "zoom" in entry:
+                # load_url remembered the zoom from before the load, and puts
+                # it back when the page finishes loading; make that the saved zoom
+                new_tab._saved_zoom = entry["zoom"]
+            pos = entry.get("scroll-pos") or {}
+            if pos.get("x") or pos.get("y"):
+                from qutebrowser.qt.core import QPoint
+                zoom = entry.get("zoom", 1.0) or 1.0
+                # saved in screen pixels, which grow with the zoom; the page
+                # scrolls in its own (unzoomed) pixels. Zoom first, so the
+                # page is laid out at its final size before it is scrolled.
+                point = QPoint(round(pos.get("x", 0) / zoom),
+                               round(pos.get("y", 0) / zoom))
+                def scroll(ok):
+                    new_tab.load_finished.disconnect(scroll)
+                    if ok:
+                        new_tab.zoom.set_factor(zoom)
+                        new_tab.scroller.to_point(point)
+                new_tab.load_finished.connect(scroll)
+        except Exception:
+            pass
+
+    load_tab._restores_view = True
+    cls._load_tab = load_tab
+
+_restore_zoom_and_scroll()
 
 # Google sign-in rejects qutebrowser's engine (an older Chromium) with "This
 # browser or app may not be secure", so on the sign-in page only, qutebrowser
