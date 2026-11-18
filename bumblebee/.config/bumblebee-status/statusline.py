@@ -70,11 +70,55 @@ OUTLINE_ARROWS = os.environ.get("STATUSLINE_ARROW_OUTLINE", "yes") != "no"
 THIN_TWIN = {"": "", "": ""}   # solid ◀ ▶ → thin < >
 
 
+# Arrows the full height of a block: i3bar draws a block from 1px below the
+# bar's top to 1px above its bottom, 4px taller than the font's line, so a
+# powerline glyph, one line tall, stops a pixel short of the frame above and
+# below, leaving a notch at each corner of the arrow's base. Arrows are drawn
+# larger, at the size that best fills the block inside the frame without
+# spilling onto the frame. Found by drawing the glyph where i3bar would (i3
+# starts text 3px down, raised by half of however much taller than the font's
+# line it is), so it holds for any font. The glyph lands on whole pixels
+# (hinting), so it's the closest fit rather than an exact one.
+def _arrow_fit():
+    _layout.set_attributes(None)
+    _layout.set_text("", -1)
+    line = _layout.get_pixel_size()[1]
+    top, bottom = 1 + FRAME_PX, line + 4 - FRAME_PX   # the rows inside the frame
+    base = _layout.get_font_description().get_size()
+
+    def score(attrs):
+        _layout.set_markup(f"<span{attrs}></span>", -1)
+        w, h = _layout.get_pixel_size()
+        surface = cairo.ImageSurface(cairo.FORMAT_A8, w, line + 6)   # clipped like a block
+        cr = cairo.Context(surface)
+        cr.move_to(0, 3 - (h - line) // 2)
+        PangoCairo.show_layout(cr, _layout)
+        surface.flush()
+        data, stride = surface.get_data(), surface.get_stride()
+        ink = [max(data[y * stride:y * stride + w]) for y in range(line + 6)]
+        # every row inside the frame inked (its corner rows only partly: a
+        # corner pixel never is fully); the frame's rows, much less so
+        return min(ink[top:bottom + 1]) - 2 * max(ink[top - 1], ink[bottom + 1])
+
+    best, fit = score(""), ""
+    for size in range(base, base * 3 // 2, 64):
+        for lh in (1, 0.85):
+            attrs = f' size="{size}" line_height="{lh}"'
+            s = score(attrs)
+            if s > best:
+                best, fit = s, attrs
+    return fit
+
+
+ARROW_FIT = _arrow_fit()
+
+
 def overlap_spacing(solid, thin):
     """The letter spacing (1024ths of a point) after SOLID that draws THIN
     exactly over it: found by measuring, so it holds for any font."""
     def offset(s):
-        _layout.set_markup(f'<span letter_spacing="{s}">{solid}</span>{thin}', -1)
+        _layout.set_markup(f'<span letter_spacing="{s}"{ARROW_FIT}>{solid}</span>'
+                           f'<span{ARROW_FIT}>{thin}</span>', -1)
         return _layout.index_to_pos(len(solid.encode())).x - _layout.index_to_pos(0).x
     lo, hi = -100000, 0
     while hi - lo > 1:
@@ -86,19 +130,49 @@ def overlap_spacing(solid, thin):
     return hi
 
 
+def trim_spacing(solid, lead, thin):
+    """The letter spacing after THIN that makes the whole arrow exactly as
+    wide as SOLID alone. Otherwise the overlap leaves it a sliver wider, i3bar
+    rounds that up to a whole pixel, and the block gets a column the arrow
+    barely covers: a dark seam down its flat side."""
+    _layout.set_markup(f"<span{ARROW_FIT}>{solid}</span>", -1)
+    target = _layout.get_extents()[1].width
+
+    def width(s):
+        _layout.set_markup(f'<span letter_spacing="{lead}"{ARROW_FIT}>{solid}</span>'
+                           f'<span letter_spacing="{s}"{ARROW_FIT}>{thin}</span>', -1)
+        return _layout.get_extents()[1].width
+    lo, hi = -100000, 0
+    if width(hi) <= target:
+        return hi
+    while hi - lo > 1:
+        mid = (lo + hi) // 2
+        if width(mid) <= target:
+            lo = mid
+        else:
+            hi = mid
+    return lo
+
+
 _spacing = {}
 
 
 def outline_arrow(blk):
-    """BLK, a solid arrow, with its thin twin over it in the frame color."""
+    """BLK, a solid arrow, drawn the block's full height, with its thin twin
+    over it in the frame color."""
     solid = blk.get("full_text")
-    thin = THIN_TWIN.get(solid)
-    if not OUTLINE_ARROWS or not blk.get("_decorator") or thin is None:
+    if not blk.get("_decorator") or solid not in THIN_TWIN:
         return
-    if solid not in _spacing:
-        _spacing[solid] = overlap_spacing(solid, thin)
-    blk["full_text"] = (f'<span letter_spacing="{_spacing[solid]}">{solid}</span>'
-                        f'<span foreground="{frame}">{thin}</span>')
+    thin = THIN_TWIN[solid]
+    if not OUTLINE_ARROWS:
+        blk["full_text"] = f"<span{ARROW_FIT}>{solid}</span>"
+    else:
+        if solid not in _spacing:
+            lead = overlap_spacing(solid, thin)
+            _spacing[solid] = lead, trim_spacing(solid, lead, thin)
+        lead, trail = _spacing[solid]
+        blk["full_text"] = (f'<span letter_spacing="{lead}"{ARROW_FIT}>{solid}</span>'
+                            f'<span foreground="{frame}" letter_spacing="{trail}"{ARROW_FIT}>{thin}</span>')
     blk["markup"] = "pango"
 
 
@@ -259,7 +333,8 @@ def lay_out(blocks):
     while len(first) > 1 and first[0].get("_decorator"):
         first.pop(0)
     ws_arrow = {
-        "full_text": "\ue0b0",
+        "full_text": f"<span{ARROW_FIT}>\ue0b0</span>",
+        "markup": "pango",
         "name": "workspace",
         "color": frame,
         "background": first[-1].get("background") if first else None,
