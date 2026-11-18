@@ -34,7 +34,8 @@ for colored text that can land on any of them, like the bar's warnings.
 
 Templates are templates/<program>.mustache, with {{base0A-hex}} (no #),
 {{on-base0A-hex}}, {{text-base0A-hex}} and {{scheme-name}}; APPS below says where each goes and
-how its program is reloaded.
+how its program is reloaded. {{recolor-js}} is templates/recolor.js, filled
+in the same way: code the YouTube and GitHub scripts share.
 
 The font goes in with the colors: {{font-family}}, the family picked
 with font-select (kept in ./font, next to this script), each program at
@@ -81,7 +82,8 @@ def reload_qutebrowser():
 
 
 def reload_greasemonkey():
-    """Reread the greasemonkey scripts (x.com's); open tabs change on reload."""
+    """Reread the greasemonkey scripts (x.com's, Wikipedia's, YouTube's and
+    GitHub's); open tabs change on their next reload."""
     qutebrowser_command(":greasemonkey-reload --quiet")
 
 
@@ -93,7 +95,11 @@ APPS = [
     ("kitty.conf", "~/.config/kitty/current-theme.conf", ["pkill", "-USR1", "-x", "kitty"]),
     ("rofi.rasi", "~/.config/rofi/colors.rasi", None),
     ("claude.css", "~/.config/qutebrowser/claude.css", None),   # reloaded with the next
-    ("x.user.js", "~/.local/share/qutebrowser/greasemonkey/base16-x.user.js", reload_greasemonkey),
+    ("x.user.js", "~/.local/share/qutebrowser/greasemonkey/base16-x.user.js", None),
+    ("wikipedia.user.js", "~/.local/share/qutebrowser/greasemonkey/base16-wikipedia.user.js", None),
+    ("youtube.user.js", "~/.local/share/qutebrowser/greasemonkey/base16-youtube.user.js", None),
+    ("github.user.js", "~/.local/share/qutebrowser/greasemonkey/base16-github.user.js",
+     reload_greasemonkey),                                   # all four at once
     ("qutebrowser.txt", "~/.config/qutebrowser/scheme", reload_qutebrowser),
     ("emacs.el", "~/.config/emacs/themes/base16-tinty-theme.el", None),
     ("discord.css", "~/.config/vesktop/themes/base16-tinty.css", None),
@@ -291,6 +297,8 @@ def apply(path):
         values[f"on-{key}-hex"] = color
     for key, color in as_text(palette).items():
         values[f"text-{key}-hex"] = color
+    # shared code, filled into the site scripts that ask for it
+    values["recolor-js"] = render("recolor.js", values)
 
     for template, dest, reload_ in APPS:
         write(dest, render(template, values))

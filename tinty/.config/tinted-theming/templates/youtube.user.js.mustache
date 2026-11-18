@@ -1,0 +1,270 @@
+// ==UserScript==
+// @name         YouTube in {{scheme-name}}
+// @description  YouTube colors from the base16 scheme (written by apply-scheme for tinty; edits are overwritten)
+// @match        https://www.youtube.com/*
+// @match        https://m.youtube.com/*
+// @match        https://youtube.com/*
+// @run-at       document-start
+// ==/UserScript==
+
+/* A qutebrowser greasemonkey script, so it only runs on YouTube; apply-scheme
+   runs :greasemonkey-reload, and open tabs change on their next reload.
+
+   YouTube's colors are CSS variables set on <html dark> (and again on
+   elements with a dark attribute), but most of them now have scrambled
+   names (--t3e41d7b17b187f69) that can change with every YouTube release.
+   So two parts:
+
+   - the stylesheet below: the variables with real names
+     (--yt-sys-color-baseline--*, the older --yt-spec-*), and the classes
+     for buttons, the player and icons (names from Catppuccin's userstyle
+     for YouTube, github.com/catppuccin/userstyles, styles/youtube, MIT).
+     It goes in first, so the page starts out in the scheme.
+   - recolor (templates/recolor.js, shared with GitHub's): reads YouTube's
+     own dark-theme variables from its stylesheets, whatever their names,
+     and gives each the scheme's nearest color: grays by lightness onto
+     base00..base07, colors by hue onto the accents. It runs again whenever
+     YouTube adds a stylesheet, as it does while it loads; without this,
+     the page goes back to YouTube's colors then.
+
+   The red is base08, so it still looks like YouTube. Only the dark theme is
+   themed: Appearance (in the account menu) on "Use device theme" follows
+   qutebrowser's preferred dark, or pick Dark. Ambient mode (the glow from
+   the video) is turned off: it's colored by the video, not the scheme. */
+
+(function () {
+  const css = `
+html[dark] {
+  color-scheme: dark !important;   /* and so qutebrowser's darkmode leaves it alone */
+  background: #{{base00-hex}} !important;
+}
+html[dark], html[dark] [dark], html[dark] [darker-dark-theme], html[dark] [system-icons] {
+  --yt-sys-color-baseline--base-background: #{{base00-hex}} !important;
+  --yt-sys-color-baseline--menu-background: #{{base01-hex}} !important;
+  --yt-sys-color-baseline--raised-background: #{{base01-hex}} !important;
+  --yt-sys-color-baseline--additive-background: #{{base02-hex}} !important;
+  --yt-sys-color-baseline--wordmark-text: #{{base05-hex}} !important;
+  --yt-sys-color-baseline--text-primary: #{{base05-hex}} !important;
+  --yt-sys-color-baseline--text-secondary: #{{base04-hex}} !important;
+  --yt-sys-color-baseline--call-to-action: #{{text-base0D-hex}} !important;
+  --yt-sys-color-baseline--suggested-action: color-mix(in srgb, #{{base0D-hex}} 30%, #{{base00-hex}}) !important;
+  --yt-sys-color-baseline--outline: #{{base02-hex}} !important;
+  --yt-sys-color-baseline--outline-opaque: #{{base02-hex}} !important;
+  --yt-sys-color-baseline--outline-inverse-opaque: #{{base03-hex}} !important;
+  --yt-sys-color-baseline--overlay-background-medium-light: color-mix(in srgb, #{{base00-hex}} 60%, transparent) !important;
+  --yt-sys-color-baseline--overlay-background-heavy: color-mix(in srgb, #{{base00-hex}} 80%, transparent) !important;
+  --yt-sys-color-baseline--overlay-background-solid: #{{base00-hex}} !important;
+  --yt-sys-color-baseline--overlay-text-primary: #{{base05-hex}} !important;
+
+  --yt-spec-base-background: #{{base00-hex}} !important;
+  --yt-spec-raised-background: #{{base01-hex}} !important;
+  --yt-spec-menu-background: #{{base01-hex}} !important;
+  --yt-spec-inverted-background: #{{base05-hex}} !important;
+  --yt-spec-additive-background: #{{base02-hex}} !important;
+  --yt-spec-outline: #{{base02-hex}} !important;
+  --yt-spec-shadow: color-mix(in srgb, #000 60%, transparent) !important;
+  --yt-spec-10-percent-layer: #{{base02-hex}} !important;
+  --yt-spec-text-primary: #{{base05-hex}} !important;
+  --yt-spec-text-secondary: #{{base04-hex}} !important;
+  --yt-spec-text-disabled: #{{base03-hex}} !important;
+  --yt-spec-text-primary-inverse: #{{base00-hex}} !important;
+  --yt-spec-icon-active-other: #{{base05-hex}} !important;
+  --yt-spec-icon-inactive: #{{base05-hex}} !important;
+  --yt-spec-icon-disabled: #{{base03-hex}} !important;
+  --yt-spec-brand-icon-active: #{{base08-hex}} !important;
+  --yt-spec-brand-icon-inactive: #{{base04-hex}} !important;
+  --iron-icon-fill-color: #{{base05-hex}} !important;
+  --yt-spec-wordmark-text: #{{base05-hex}} !important;
+  --yt-spec-call-to-action: #{{text-base0D-hex}} !important;
+  --yt-spec-call-to-action-inverse: #{{text-base0D-hex}} !important;
+  --yt-spec-call-to-action-hover: #{{text-base0D-hex}} !important;
+  --yt-spec-suggested-action: color-mix(in srgb, #{{base0D-hex}} 20%, transparent) !important;
+  --yt-spec-suggested-action-inverse: #{{base05-hex}} !important;
+  --yt-spec-brand-link-text: #{{text-base0D-hex}} !important;
+  --yt-spec-themed-blue: #{{text-base0D-hex}} !important;
+  --yt-spec-themed-green: #{{text-base0B-hex}} !important;
+  --yt-spec-error-indicator: #{{text-base08-hex}} !important;
+  --yt-spec-ad-indicator: #{{text-base0A-hex}} !important;
+  --yt-spec-static-ad-yellow: #{{base0A-hex}} !important;
+  --yt-spec-commerce-badge-background: #{{base0B-hex}} !important;
+  --yt-spec-badge-chip-background: #{{base02-hex}} !important;
+  --yt-spec-verified-badge-background: #{{base03-hex}} !important;
+  --yt-spec-button-chip-background-hover: color-mix(in srgb, #{{base02-hex}} 60%, #{{base03-hex}}) !important;
+  --yt-spec-touch-response: #{{base02-hex}} !important;
+  --yt-spec-touch-response-inverse: #{{base08-hex}} !important;
+  --yt-spec-mono-filled-hover: color-mix(in srgb, #{{base05-hex}} 85%, #{{base00-hex}}) !important;
+  --yt-spec-mono-tonal-hover: color-mix(in srgb, #{{base02-hex}} 60%, #{{base03-hex}}) !important;
+  --yt-spec-filled-button-text: #{{base00-hex}} !important;
+  --yt-spec-selected-nav-text: #{{base05-hex}} !important;
+  --yt-spec-snackbar-background: #{{base01-hex}} !important;
+  --yt-spec-snackbar-background-updated: #{{base01-hex}} !important;
+  --yt-spec-general-background-a: #{{base00-hex}} !important;
+  --yt-spec-general-background-b: #{{base00-hex}} !important;
+  --yt-spec-general-background-c: #{{base01-hex}} !important;
+  --yt-spec-brand-background-solid: #{{base00-hex}} !important;
+  --yt-spec-brand-background-primary: #{{base00-hex}} !important;
+  --yt-spec-brand-background-secondary: #{{base01-hex}} !important;
+  --yt-spec-error-background: #{{base00-hex}} !important;
+  --yt-spec-overlay-text-primary: #{{base05-hex}} !important;
+  --yt-spec-overlay-background-solid: #{{base00-hex}} !important;
+  --yt-spec-overlay-background-heavy: color-mix(in srgb, #{{base00-hex}} 80%, transparent) !important;
+  --yt-spec-overlay-background-medium-light: color-mix(in srgb, #{{base00-hex}} 60%, transparent) !important;
+  --yt-spec-themed-overlay-background: color-mix(in srgb, #{{base00-hex}} 80%, transparent) !important;
+
+  /* YouTube's red, as the scheme's */
+  --yt-brand-youtube-red: #{{base08-hex}} !important;
+  --yt-brand-medium-red: #{{base08-hex}} !important;
+  --yt-brand-light-red: #{{base08-hex}} !important;
+  --yt-spec-red-indicator: #{{base08-hex}} !important;
+  --yt-spec-static-brand-red: #{{base08-hex}} !important;
+  --yt-spec-brand-button-background: #{{base08-hex}} !important;
+  --yt-spec-brand-button-background-hover: color-mix(in srgb, #{{base08-hex}} 85%, #{{base07-hex}}) !important;
+  --yt-spec-red-30: #{{text-base09-hex}} !important;
+  --yt-spec-red-70: #{{text-base08-hex}} !important;
+  --yt-spec-light-blue: #{{text-base0D-hex}} !important;
+  --yt-spec-dark-blue: #{{base0D-hex}} !important;
+  --yt-spec-light-green: #{{text-base0B-hex}} !important;
+  --yt-spec-dark-green: #{{base0B-hex}} !important;
+  --yt-spec-yellow: #{{base0A-hex}} !important;
+
+  /* the search bar */
+  --ytd-searchbox-background: #{{base00-hex}} !important;
+  --ytd-searchbox-text-color: #{{base05-hex}} !important;
+  --ytd-searchbox-border-color: #{{base02-hex}} !important;
+  --ytd-searchbox-legacy-border-color: #{{base02-hex}} !important;
+  --ytd-searchbox-legacy-button-color: #{{base01-hex}} !important;
+  --ytd-searchbox-legacy-button-border-color: #{{base02-hex}} !important;
+  --ytd-searchbox-legacy-button-hover-color: #{{base02-hex}} !important;
+  --ytd-searchbox-legacy-button-icon-color: #{{base05-hex}} !important;
+
+  /* live chat */
+  --yt-live-chat-background-color: #{{base00-hex}} !important;
+  --yt-live-chat-action-panel-background-color: #{{base00-hex}} !important;
+  --yt-live-chat-secondary-background-color: #{{base01-hex}} !important;
+  --yt-live-chat-sub-panel-background-color: #{{base00-hex}} !important;
+  --yt-live-chat-dialog-background-color: #{{base01-hex}} !important;
+  --yt-live-chat-primary-text-color: #{{base05-hex}} !important;
+  --yt-live-chat-secondary-text-color: #{{base04-hex}} !important;
+  --yt-live-chat-tertiary-text-color: #{{base04-hex}} !important;
+  --yt-live-chat-moderator-color: #{{text-base0D-hex}} !important;
+  --yt-live-chat-owner-color: #{{text-base0A-hex}} !important;
+  --yt-live-chat-sponsor-color: #{{text-base0B-hex}} !important;
+  --yt-live-chat-mention-background-color: #{{base08-hex}} !important;
+  --yt-live-chat-mention-text-color: #{{on-base08-hex}} !important;
+
+  --paper-tooltip-background: #{{base02-hex}} !important;
+  --paper-tooltip-text-color: #{{base05-hex}} !important;
+  --dark-theme-text-color: #{{base05-hex}} !important;
+  --dark-theme-secondary-color: #{{base04-hex}} !important;
+  --dark-theme-disabled-color: #{{base03-hex}} !important;
+  --dark-theme-divider-color: #{{base02-hex}} !important;
+}
+
+html[dark] {
+  /* the top bar and the chips under it */
+  & #background.ytd-masthead, & #frosted-glass {
+    --yt-frosted-glass-desktop: #{{base00-hex}} !important;
+    --yt-spec-frosted-glass-desktop: #{{base00-hex}} !important;
+  }
+  & #chips-wrapper.ytd-feed-filter-chip-bar-renderer, & #home-chips,
+  & #guide-skeleton, & #home-container-skeleton,
+  & ytd-app[is-shorts-page] { background-color: #{{base00-hex}} !important; }
+  & .skeleton-bg-color, & .guide-ghost-icon, & .guide-ghost-text, & .masthead-skeleton-icon {
+    background-color: #{{base02-hex}} !important;
+  }
+  & #progress.yt-page-navigation-progress { background: #{{base08-hex}} !important; }
+
+  /* ambient mode */
+  & #cinematics, & #cinematic-container { display: none !important; }
+
+  /* the logo, and other red icons */
+  & :is([fill="red"], [fill="#F00"], [fill="#FF0000"], [fill="#f03"], [fill="#FF0033"]) { fill: #{{base08-hex}} !important; }
+  & yt-icon.ytd-logo [fill="white"] { fill: #{{on-base08-hex}} !important; }
+  & .ytSpecIconBadgeShapeTypeNotification .ytSpecIconBadgeShapeBadge {
+    background-color: #{{base08-hex}} !important;
+    color: #{{on-base08-hex}} !important;
+  }
+
+  /* buttons: gray ones, and the white ones (Subscribe) */
+  & .yt-spec-button-shape-next--mono.yt-spec-button-shape-next--tonal {
+    color: #{{base05-hex}} !important;
+    background-color: #{{base02-hex}} !important;
+  }
+  & .yt-spec-button-shape-next--mono.yt-spec-button-shape-next--tonal:hover,
+  & .yt-spec-button-shape-next--mono.yt-spec-button-shape-next--text:hover {
+    background-color: color-mix(in srgb, #{{base02-hex}} 60%, #{{base03-hex}}) !important;
+  }
+  & .yt-spec-button-shape-next--mono.yt-spec-button-shape-next--outline {
+    color: #{{base05-hex}} !important;
+    border-color: #{{base03-hex}} !important;
+  }
+  & .yt-spec-button-shape-next--mono.yt-spec-button-shape-next--filled {
+    color: #{{on-base05-hex}} !important;
+    background-color: #{{base05-hex}} !important;
+  }
+  & .yt-spec-button-shape-next--mono.yt-spec-button-shape-next--filled:hover {
+    background-color: color-mix(in srgb, #{{base05-hex}} 85%, #{{base00-hex}}) !important;
+  }
+  & .yt-spec-button-shape-next--call-to-action.yt-spec-button-shape-next--filled {
+    color: #{{on-base0D-hex}} !important;
+    background-color: #{{base0D-hex}} !important;
+  }
+  & .yt-spec-button-shape-next--call-to-action:is(.yt-spec-button-shape-next--text, .yt-spec-button-shape-next--outline) {
+    color: #{{text-base0D-hex}} !important;
+  }
+  & .yt-spec-button-shape-next--disabled { color: #{{base03-hex}} !important; }
+
+  /* the search box */
+  & .ytSearchboxComponentInputBoxDark {
+    background-color: #{{base00-hex}} !important;
+    border-color: #{{base02-hex}} !important;
+    color: #{{base05-hex}} !important;
+  }
+  & .ytSearchboxComponentInputBoxHasFocusDark { border-color: #{{base0D-hex}} !important; }
+  & .ytSearchboxComponentSearchButtonDark {
+    background-color: #{{base01-hex}} !important;
+    border-color: #{{base02-hex}} !important;
+  }
+  & .ytSearchboxComponentSuggestionsContainerDark { background-color: #{{base01-hex}} !important; }
+  & .ytSuggestionComponentHighlighted { background-color: #{{base02-hex}} !important; }
+
+  /* "watched" bars on thumbnails */
+  & .ytThumbnailOverlayProgressBarHostWatchedProgressBar,
+  & ytd-thumbnail-overlay-resume-playback-renderer { background-color: #{{base03-hex}} !important; }
+  & .ytThumbnailOverlayProgressBarHostWatchedProgressBarSegment,
+  & #progress.ytd-thumbnail-overlay-resume-playback-renderer { background: #{{base08-hex}} !important; }
+}
+
+/* ---------------------------------------------------------- the player */
+.ytp-swatch-background-color, .ytp-play-progress,
+.ytProgressBarLineProgressBarPlayed, .ytProgressBarPlayheadProgressBarPlayheadDot,
+.ytp-settings-button:is(.ytp-hd-quality-badge, .ytp-hdr-quality-badge, .ytp-4k-quality-badge,
+                        .ytp-5k-quality-badge, .ytp-8k-quality-badge)::after {
+  background: #{{base08-hex}} !important;
+}
+.ytp-popup, .ytp-tooltip-bottom-text {
+  background: color-mix(in srgb, #{{base01-hex}} 92%, transparent) !important;
+  color: #{{base05-hex}} !important;
+  text-shadow: none !important;
+}
+:is(.ytp-panel-menu, .ytp-panel-header, .ytp-menuitem-label, .ytp-menuitem-content, .ytp-menu-label-secondary) {
+  color: #{{base05-hex}} !important;
+}
+.ytp-menuitem:not([aria-disabled="true"]):hover { background-color: #{{base02-hex}} !important; }
+.ytp-menuitem[aria-checked="true"] .ytp-menuitem-toggle-checkbox { background-color: #{{base08-hex}} !important; }
+.ytp-sb-subscribe { background-color: #{{base08-hex}} !important; color: #{{on-base08-hex}} !important; }
+.ytp-sb-unsubscribe { background-color: #{{base02-hex}} !important; color: #{{base05-hex}} !important; }
+`;
+{{recolor-js}}
+
+  start({
+    css,
+    target: "html[dark], html[dark] [dark]",
+    // the dark theme's rules ([dark], html[dark], ...), over the defaults on :root
+    pick: sel => /\[dark\]/.test(sel) ? 2 : /^(:root)+$/.test(sel) ? 1 : 0,
+    // YouTube's grays: #0f0f0f the background, #f1f1f1 the text
+    ramp: [[0, "{{base00-hex}}"], [0.06, "{{base00-hex}}"], [0.13, "{{base01-hex}}"],
+           [0.25, "{{base02-hex}}"], [0.44, "{{base03-hex}}"], [0.67, "{{base04-hex}}"],
+           [0.945, "{{base05-hex}}"], [1, "{{base07-hex}}"]],
+  });
+})();

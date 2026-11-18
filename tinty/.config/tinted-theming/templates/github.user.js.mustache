@@ -1,0 +1,46 @@
+// ==UserScript==
+// @name         GitHub in {{scheme-name}}
+// @description  GitHub colors from the base16 scheme (written by apply-scheme for tinty; edits are overwritten)
+// @match        https://github.com/*
+// @match        https://gist.github.com/*
+// @run-at       document-start
+// ==/UserScript==
+
+/* A qutebrowser greasemonkey script, so it only runs on GitHub; apply-scheme
+   runs :greasemonkey-reload, and open tabs change on their next reload.
+
+   GitHub's colors are Primer's CSS variables, near a thousand of them
+   (--bgColor-default, --button-default-bgColor-rest, the syntax colors...),
+   set by a stylesheet per theme on the elements with data-color-mode
+   (<html>, and the odd one inside). Rather than list them all, recolor
+   (templates/recolor.js, shared with YouTube's) reads the "Dark default"
+   theme's from its stylesheet and gives each the scheme's nearest color:
+   GitHub's grays by lightness onto base00..base07 (#0d1117 the page,
+   #151b23 boxes, #3d444d borders, #9198a1 dim text, #f0f6fc text, and
+   #010409, darker than the page, a little darker than base00), its colors
+   by hue onto the accents, shadows too.
+
+   They're set on every data-color-mode element whatever GitHub's own
+   Appearance setting says, so the page is always in the scheme; but leave
+   its dark theme on "Dark default", the one that's read. */
+
+(function () {
+  const css = `
+:root {
+  color-scheme: dark !important;   /* and so qutebrowser's darkmode leaves it alone */
+}
+`;
+{{recolor-js}}
+
+  start({
+    css,
+    target: "[data-color-mode]",
+    // the "Dark default" theme's rules, wherever GitHub uses it
+    // (as the browser writes them back: [data-dark-theme="dark"])
+    pick: sel => /data-(dark|light)-theme="?dark"?\]/.test(sel) ? 2 : 0,
+    ramp: [[0, darker("{{base00-hex}}", 0.35)], [0.02, darker("{{base00-hex}}", 0.35)],
+           [0.07, "{{base00-hex}}"], [0.11, "{{base01-hex}}"], [0.27, "{{base02-hex}}"],
+           [0.42, "{{base03-hex}}"], [0.6, "{{base04-hex}}"], [0.97, "{{base05-hex}}"],
+           [1, "{{base07-hex}}"]],
+  });
+})();

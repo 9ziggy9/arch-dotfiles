@@ -1,0 +1,187 @@
+// ==UserScript==
+// @name         Wikipedia in {{scheme-name}}
+// @description  Wikipedia colors from the base16 scheme (written by apply-scheme for tinty; edits are overwritten)
+// @match        https://*.wikipedia.org/*
+// @match        https://*.wiktionary.org/*
+// @match        https://*.wikimedia.org/*
+// @match        https://*.mediawiki.org/*
+// @match        https://*.wikidata.org/*
+// @match        https://*.wikibooks.org/*
+// @match        https://*.wikiquote.org/*
+// @match        https://*.wikisource.org/*
+// @match        https://*.wikivoyage.org/*
+// @run-at       document-start
+// ==/UserScript==
+
+/* A qutebrowser greasemonkey script, so it only runs on Wikipedia and its
+   sister sites; apply-scheme runs :greasemonkey-reload, and open tabs change
+   on their next reload.
+
+   Wikipedia's skins (Vector, and Minerva on mobile) take every color from
+   Codex's design tokens, CSS variables like --background-color-base, so
+   those are set to the scheme's. Its dark mode is what's themed, and
+   Wikipedia sends every page in light mode (skin-theme-clientpref-day on
+   <html>) unless Appearance says otherwise, so the script switches that to
+   dark (-night) itself, and back whenever Wikipedia sets it again: the
+   Appearance menu's Light is overruled. Some article templates
+   (infoboxes, navboxes) have their own fixed colors; those are set too. The
+   variable names are from Codex; Catppuccin's userstyle for Wikipedia
+   (github.com/catppuccin/userstyles, styles/wikipedia, MIT) for the rest. */
+
+(function () {
+  const css = `
+:root:is(.skin-theme-clientpref-night, .skin-theme-clientpref-os) {
+  color-scheme: dark !important;   /* and so qutebrowser's darkmode leaves it alone */
+
+  --color-base: #{{base05-hex}} !important;
+  --color-base--hover: #{{base06-hex}} !important;
+  --color-emphasized: #{{base06-hex}} !important;
+  --color-subtle: #{{base04-hex}} !important;
+  --color-inverted: #{{base00-hex}} !important;
+  --color-inverted-fixed: #{{base00-hex}} !important;
+  --color-placeholder: #{{base04-hex}} !important;
+  --color-disabled: #{{base03-hex}} !important;
+  --color-notice: #{{base05-hex}} !important;
+
+  /* links: unvisited, visited, and red links (no article yet) */
+  --color-progressive: #{{text-base0D-hex}} !important;
+  --color-progressive--hover: color-mix(in srgb, #{{text-base0D-hex}} 80%, #{{base07-hex}}) !important;
+  --color-progressive--active: color-mix(in srgb, #{{text-base0D-hex}} 80%, #{{base07-hex}}) !important;
+  --color-progressive--focus: #{{text-base0D-hex}} !important;
+  --color-visited: #{{text-base0E-hex}} !important;
+  --color-destructive: #{{text-base08-hex}} !important;
+  --color-destructive--hover: color-mix(in srgb, #{{text-base08-hex}} 80%, #{{base07-hex}}) !important;
+  --color-destructive--active: color-mix(in srgb, #{{text-base08-hex}} 80%, #{{base07-hex}}) !important;
+  --color-destructive--visited: color-mix(in srgb, #{{text-base08-hex}} 70%, #{{text-base0E-hex}}) !important;
+
+  --color-error: #{{text-base08-hex}} !important;
+  --color-warning: #{{text-base0A-hex}} !important;
+  --color-success: #{{text-base0B-hex}} !important;
+  --color-icon-error: #{{base08-hex}} !important;
+  --color-icon-warning: #{{base0A-hex}} !important;
+  --color-icon-success: #{{base0B-hex}} !important;
+  --color-icon-notice: #{{base04-hex}} !important;
+  --color-content-added: #{{text-base0B-hex}} !important;
+  --color-content-removed: #{{text-base08-hex}} !important;
+
+  --background-color-base: #{{base00-hex}} !important;
+  --background-color-neutral: #{{base01-hex}} !important;
+  --background-color-neutral-subtle: #{{base01-hex}} !important;
+  --background-color-interactive: #{{base02-hex}} !important;
+  --background-color-interactive-subtle: #{{base01-hex}} !important;
+  --background-color-interactive-subtle--hover: #{{base02-hex}} !important;
+  --background-color-interactive-subtle--active: #{{base02-hex}} !important;
+  --background-color-inverted: #{{base05-hex}} !important;
+  --background-color-disabled: #{{base03-hex}} !important;
+  --background-color-disabled-subtle: #{{base01-hex}} !important;
+  --background-color-progressive: #{{base0D-hex}} !important;
+  --background-color-progressive--hover: color-mix(in srgb, #{{base0D-hex}} 85%, #{{base07-hex}}) !important;
+  --background-color-progressive--active: color-mix(in srgb, #{{base0D-hex}} 85%, #{{base00-hex}}) !important;
+  --background-color-progressive--focus: #{{base0D-hex}} !important;
+  --background-color-progressive-subtle: color-mix(in srgb, #{{base0D-hex}} 15%, #{{base00-hex}}) !important;
+  --background-color-destructive: #{{base08-hex}} !important;
+  --background-color-destructive-subtle: color-mix(in srgb, #{{base08-hex}} 15%, #{{base00-hex}}) !important;
+  --background-color-error: #{{base08-hex}} !important;
+  --background-color-error--hover: color-mix(in srgb, #{{base08-hex}} 85%, #{{base07-hex}}) !important;
+  --background-color-error--active: color-mix(in srgb, #{{base08-hex}} 85%, #{{base00-hex}}) !important;
+  --background-color-error-subtle: color-mix(in srgb, #{{base08-hex}} 15%, #{{base00-hex}}) !important;
+  --background-color-warning-subtle: color-mix(in srgb, #{{base0A-hex}} 15%, #{{base00-hex}}) !important;
+  --background-color-success-subtle: color-mix(in srgb, #{{base0B-hex}} 15%, #{{base00-hex}}) !important;
+  --background-color-notice-subtle: #{{base01-hex}} !important;
+  --background-color-content-added: color-mix(in srgb, #{{base0B-hex}} 25%, #{{base00-hex}}) !important;
+  --background-color-content-removed: color-mix(in srgb, #{{base08-hex}} 25%, #{{base00-hex}}) !important;
+  --background-color-input-binary--checked: #{{base0D-hex}} !important;
+
+  --border-color-base: #{{base02-hex}} !important;
+  --border-color-subtle: #{{base02-hex}} !important;
+  --border-color-muted: #{{base02-hex}} !important;
+  --border-color-interactive: #{{base03-hex}} !important;
+  --border-color-interactive--hover: #{{base04-hex}} !important;
+  --border-color-disabled: #{{base03-hex}} !important;
+  --border-color-inverted: #{{base00-hex}} !important;
+  --border-color-notice: #{{base03-hex}} !important;
+  --border-color-error: #{{base08-hex}} !important;
+  --border-color-error--hover: #{{base08-hex}} !important;
+  --border-color-warning: #{{base0A-hex}} !important;
+  --border-color-success: #{{base0B-hex}} !important;
+  --border-color-content-added: #{{base0B-hex}} !important;
+  --border-color-content-removed: #{{base08-hex}} !important;
+  --border-color-progressive: #{{base0D-hex}} !important;
+  --border-color-progressive--hover: #{{base0D-hex}} !important;
+  --border-color-progressive--active: #{{base0D-hex}} !important;
+  --border-color-progressive--focus: #{{base0D-hex}} !important;
+  --box-shadow-color-progressive--focus: #{{base0D-hex}} !important;
+
+  /* Wiktionary's own */
+  --wikt-palette-indigo: #{{text-base0E-hex}} !important;
+  --wikt-palette-lightindigo: color-mix(in srgb, #{{base0E-hex}} 40%, transparent) !important;
+  --wikt-palette-lighterblue: color-mix(in srgb, #{{base0D-hex}} 20%, transparent) !important;
+  --wikt-palette-dulllightblue: color-mix(in srgb, #{{base0D-hex}} 40%, transparent) !important;
+  --wikt-palette-grey: #{{base04-hex}} !important;
+  --wikt-palette-lightergrey: color-mix(in srgb, #{{base04-hex}} 40%, transparent) !important;
+}
+
+/* ---------------------------------------------------------- article templates */
+:root:is(.skin-theme-clientpref-night, .skin-theme-clientpref-os) {
+  & .infobox, & .hatnote, & .dablink, & .rellink, & .sidebar {
+    color: var(--color-base) !important;
+    background-color: var(--background-color-neutral-subtle) !important;
+    border-color: var(--border-color-interactive) !important;
+  }
+  & :is(.infobox td, .infobox th, .infobox-above, .infobox-header, .infobox caption,
+        .infobox > div, .navbox, .navbox-subgroup, .navbox-group, .navbox-even,
+        .navbox-abovebelow, .navbox-title, .navigation-box, .metadata, .quotebox,
+        .side-box, .sidebar-title, .sidebar-heading, .skin-nightmode-reset-color):not(.notheme) {
+    background: inherit !important;
+    color: inherit !important;
+    border-color: var(--border-color-subtle) !important;
+  }
+  & .navbox-title, & .navbox-group, & .infobox-header, & .sidebar-title {
+    background-color: var(--background-color-interactive) !important;
+  }
+  & .navbox-even { background-color: var(--background-color-neutral-subtle) !important; }
+  & :is([style="color:white;"], [style*="color:#ffffff"]) { color: var(--color-base) !important; }
+  & textarea { background-color: #{{base01-hex}} !important; color: var(--color-base) !important; }
+  & a:focus { outline-color: #{{base0D-hex}} !important; }
+
+  /* the Main Page's boxes */
+  & #mp-topbanner { background-color: var(--background-color-base) !important; border-color: var(--border-color-subtle) !important; }
+  & #mp-left { background-color: color-mix(in srgb, #{{base0B-hex}} 12%, #{{base00-hex}}) !important; border-color: #{{base0B-hex}} !important; }
+  & #mp-right { background-color: color-mix(in srgb, #{{base0D-hex}} 12%, #{{base00-hex}}) !important; border-color: #{{base0D-hex}} !important; }
+  & #mp-lower { background-color: color-mix(in srgb, #{{base0E-hex}} 12%, #{{base00-hex}}) !important; border-color: #{{base0E-hex}} !important; }
+  & #mp-bottom { border-color: #{{base03-hex}} !important; }
+  & #mp-left .mp-h2 { background-color: color-mix(in srgb, #{{base0B-hex}} 30%, #{{base00-hex}}) !important; border-color: transparent !important; }
+  & #mp-right .mp-h2 { background-color: color-mix(in srgb, #{{base0D-hex}} 30%, #{{base00-hex}}) !important; border-color: transparent !important; }
+  & #mp-lower .mp-h2 { background-color: color-mix(in srgb, #{{base0E-hex}} 30%, #{{base00-hex}}) !important; border-color: transparent !important; }
+  & #mp-bottom .mp-h2 { background-color: color-mix(in srgb, #{{base0C-hex}} 30%, #{{base00-hex}}) !important; border-color: transparent !important; }
+}
+`;
+  const style = document.createElement("style");
+  style.id = "base16-tinty";
+  style.textContent = css;
+  // qutebrowser runs document-start scripts before there's even an <html>,
+  // so wait for it (adding the style as early as possible: no flash of the
+  // site's own colors). Into <html>, since <head> may not be there yet either.
+  function start() {
+    const html = document.documentElement;
+    html.appendChild(style);
+    // Wikipedia's dark mode instead of its light mode: now, and again after
+    // its own script sets the class from the Appearance setting
+    const dark = () => {
+      if (html.classList.contains("skin-theme-clientpref-day"))
+        html.classList.replace("skin-theme-clientpref-day", "skin-theme-clientpref-night");
+    };
+    dark();
+    new MutationObserver(dark).observe(html, { attributes: true, attributeFilter: ["class"] });
+  }
+  if (document.documentElement) {
+    start();
+  } else {
+    new MutationObserver((_, observer) => {
+      if (document.documentElement) {
+        observer.disconnect();
+        start();
+      }
+    }).observe(document, { childList: true });
+  }
+})();

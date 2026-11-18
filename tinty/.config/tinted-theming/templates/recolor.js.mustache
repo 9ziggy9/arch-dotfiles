@@ -1,0 +1,168 @@
+  // ---------------------------------------------------------- recolor
+  // Shared by the site scripts whose colors are too many CSS variables to
+  // list (YouTube, GitHub): apply-scheme fills it in as recolor-js, where
+  // their templates ask for it.
+  //
+  // start({css, ramp, target, pick}) adds CSS (the site's stylesheet, by
+  // name) and then reads the site's own dark-theme variables from its
+  // stylesheets, whatever their names, giving each the scheme's nearest
+  // color: grays by lightness along RAMP ([the site's lightness, the
+  // scheme's color] pairs, mixed in between), colors by hue onto the
+  // accents, transparency kept; colors inside longer values (shadows) too.
+  // PICK says which rules are the dark theme's: 2 for a rule that sets the
+  // dark theme, 1 for defaults it overrides (:root), 0 to leave alone. The
+  // new values are set on TARGET, !important. It runs again whenever the
+  // site adds a stylesheet, as they do while loading.
+
+  const hues = [   // [hue up to, the accent as a fill, as text], round the wheel
+    [15, "{{base08-hex}}", "{{text-base08-hex}}"], [45, "{{base09-hex}}", "{{text-base09-hex}}"],
+    [70, "{{base0A-hex}}", "{{text-base0A-hex}}"], [165, "{{base0B-hex}}", "{{text-base0B-hex}}"],
+    [195, "{{base0C-hex}}", "{{text-base0C-hex}}"], [255, "{{base0D-hex}}", "{{text-base0D-hex}}"],
+    [345, "{{base0E-hex}}", "{{text-base0E-hex}}"], [361, "{{base08-hex}}", "{{text-base08-hex}}"],
+  ];
+  const background = "{{base00-hex}}";
+
+  const rgbOf = hex => [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const mixed = (a, b, t) => rgbOf(a).map((c, i) => Math.round(c + (rgbOf(b)[i] - c) * t));
+  const hexOf = rgb => rgb.map(c => c.toString(16).padStart(2, "0")).join("");
+  const darker = (hex, t) => hexOf(mixed(hex, "000000", t));
+  const css_ = ([r, g, b], a) => a >= 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${a})`;
+
+  const COLOR = /#[0-9a-f]{3,8}\b|rgba?\([^()]*\)/gi;
+
+  // "#0f0f0f", "#f57", "#01040966", "rgba(255,255,255,0.1)" → [r, g, b, a]
+  function parse(value) {
+    value = value.trim().toLowerCase();
+    let m = value.match(/^#([0-9a-f]{3,8})$/);
+    if (m) {
+      let h = m[1];
+      if (h.length === 3 || h.length === 4) h = [...h].map(c => c + c).join("");
+      if (h.length !== 6 && h.length !== 8) return null;
+      const a = h.length === 8 ? parseInt(h.slice(6), 16) / 255 : 1;
+      return [...rgbOf(h), Math.round(a * 1000) / 1000];
+    }
+    m = value.match(/^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:[\s,/]+([\d.]+%?))?\s*\)$/);
+    if (m) {
+      let a = m[4] === undefined ? 1 : parseFloat(m[4]);
+      if (m[4] && m[4].endsWith("%")) a /= 100;
+      return [+m[1], +m[2], +m[3], a];
+    }
+    return null;
+  }
+
+  // the site's dark-theme color → the scheme's
+  function map([r, g, b, a], ramp) {
+    const max = Math.max(r, g, b) / 255, min = Math.min(r, g, b) / 255;
+    const l = (max + min) / 2, chroma = max - min;
+    if (chroma < 0.1 || l < 0.05 || l > 0.92) {           // a gray (or near it)
+      for (let i = 1; i < ramp.length; i++) {
+        const [l0, c0] = ramp[i - 1], [l1, c1] = ramp[i];
+        if (l <= l1) return css_(mixed(c0, c1, l1 > l0 ? (l - l0) / (l1 - l0) : 0), a);
+      }
+    }
+    let h;                                                  // a color: by hue
+    if (max === r / 255) h = ((g - b) / 255 / chroma) % 6;
+    else if (max === g / 255) h = (b - r) / 255 / chroma + 2;
+    else h = (r - g) / 255 / chroma + 4;
+    h = (h * 60 + 360) % 360;
+    const [, fill, text] = hues.find(([upTo]) => h < upTo);
+    if (l < 0.3) return css_(mixed(background, fill, Math.max(0.15, l * 1.5)), a);  // a tinted background
+    if (l > 0.6) return css_(rgbOf(text), a);               // colored text
+    return css_(rgbOf(fill), a);
+  }
+
+  // a value with every color in it mapped; null if it has none
+  function remap(value, ramp) {
+    let found = false;
+    const out = value.replace(COLOR, c => {
+      const rgba = parse(c);
+      if (!rgba) return c;
+      found = true;
+      return map(rgba, ramp);
+    });
+    return found ? out : null;
+  }
+
+  function start({ css, ramp, target, pick }) {
+    const style = document.createElement("style");
+    style.id = "base16-tinty";
+    style.textContent = css;
+    const recolored = document.createElement("style");
+    recolored.id = "base16-tinty-recolored";
+
+    const seen = new WeakSet();
+    const vars = new Map();          // the site's variable → [its dark value, from a rank-2 rule]
+    let own = null;                  // the variables CSS sets by name: left to it
+
+    function scan(rules) {
+      for (const rule of rules) {
+        if (rule.cssRules && rule.cssRules.length) scan(rule.cssRules);
+        if (!rule.style || !rule.selectorText) continue;
+        const rank = pick(rule.selectorText);
+        if (!rank) continue;
+        for (const name of rule.style) {
+          if (!name.startsWith("--") || own.has(name)) continue;
+          const had = vars.get(name);
+          if (had && had[1] > rank) continue;
+          const value = remap(rule.style.getPropertyValue(name), ramp);
+          if (value !== null) vars.set(name, [value, rank]);
+        }
+      }
+    }
+
+    function recolor() {
+      if (!own) {
+        if (!style.sheet) return;
+        own = new Set();
+        for (const rule of style.sheet.cssRules)
+          if (rule.style) for (const name of rule.style) if (name.startsWith("--")) own.add(name);
+      }
+      const before = vars.size;
+      for (const sheet of document.styleSheets) {
+        if (seen.has(sheet) || sheet.ownerNode === style || sheet.ownerNode === recolored) continue;
+        let rules;
+        try { rules = sheet.cssRules; } catch (e) { continue; }  // not readable, or not loaded yet
+        seen.add(sheet);
+        scan(rules);
+      }
+      if (vars.size === before && recolored.textContent) return;
+      const decls = [...vars].map(([name, [value]]) => `  ${name}: ${value} !important;`);
+      recolored.textContent = `${target} {\n${decls.join("\n")}\n}\n`;
+    }
+
+    let pending = false;
+    function soon() {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(() => { pending = false; recolor(); });
+    }
+
+    function begin() {
+      document.documentElement.append(style, recolored);
+      // the site's stylesheets: <link>s (read once loaded) and <style>s it
+      // adds as it goes. Ours win over them whatever the order: !important.
+      new MutationObserver(mutations => {
+        for (const m of mutations) for (const node of m.addedNodes) {
+          if (node.nodeName === "LINK") node.addEventListener("load", soon, { once: true });
+          if (node.nodeName === "STYLE" || node.nodeName === "LINK") soon();
+        }
+      }).observe(document.documentElement, { childList: true, subtree: true });
+      document.addEventListener("DOMContentLoaded", soon);
+      window.addEventListener("load", soon);
+      soon();
+    }
+
+    // qutebrowser runs document-start scripts before there's even an
+    // <html>, so wait for it (as early as possible: no flash of the site's
+    // own colors). Into <html>, since <head> may not be there yet either.
+    if (document.documentElement) {
+      begin();
+    } else {
+      new MutationObserver((_, observer) => {
+        if (document.documentElement) {
+          observer.disconnect();
+          begin();
+        }
+      }).observe(document, { childList: true });
+    }
+  }
