@@ -20,10 +20,6 @@
 #
 # The mirror is cropped to hide the Notes toolbars (see crop below).
 #
-# boox-ink runs alongside the mirror and draws pen strokes over it while
-# they're being drawn (the mirror only gets them on pen-up); its output goes
-# to ~/.cache/boox-ink.log.
-#
 # scrcpy's output goes to ~/.cache/boox-screen.log.
 
 title=Boox
@@ -82,15 +78,8 @@ fi
 
 i3-msg -q "workspace number $ws"
 
-# live pen strokes over the mirror (boox-ink), unless already running
-ink() {
-    pgrep -f -- "boox-ink " >/dev/null ||
-        setsid -f boox-ink "$1" "$crop" >"$HOME/.cache/boox-ink.log" 2>&1
-}
-
 if pgrep -f -- "scrcpy --window-title $title( |\$)" >/dev/null; then
     i3-msg -q "[class=\"^scrcpy\$\" title=\"^$title\$\"] move to workspace number $ws, focus, fullscreen enable" 2>/dev/null
-    ink "$(pgrep -af -- "scrcpy --window-title $title( |\$)" | sed -n 's/.* -s \([^ ]*\).*/\1/p' | head -1)"
     exit 0
 fi
 
@@ -116,5 +105,3 @@ fi
 mkdir -p "$HOME/.cache"
 setsid -f scrcpy --window-title "$title" -s "$serial" --stay-awake --no-audio --crop="$crop" \
     >"$HOME/.cache/boox-screen.log" 2>&1
-pkill -f -- "boox-ink " 2>/dev/null   # one left from a mirror on another connection
-ink "$serial"
